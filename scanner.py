@@ -68,9 +68,8 @@ async def scan_network() -> list[dict]:
             await create_alert(
                 level="high",
                 category="new_device",
-                message=f"Nouvel appareil détecté : {ip} ({hostname}) — Fabricant : {vendor}",
+                message=f"Nouvel appareil détecté sur le réseau : {ip} ({hostname}) — Fabricant : {vendor}",
             )
-            logger.warning("Nouvel appareil : %s (%s)", ip, hostname)
 
         results.append({
             "ip": ip,
@@ -89,5 +88,5 @@ async def scan_network() -> list[dict]:
             message=f"L'appareil {ip} n'est plus joignable sur le réseau.",
         )
 
-    logger.info("Scan terminé : %d actifs, %d offline", len(active_ips), len(offline_ips))
+    logger.info("Scan terminé : %d actifs, %d passés offline", len(active_ips), len(offline_ips))
     return results

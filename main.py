@@ -33,7 +33,6 @@ scheduler = AsyncIOScheduler(timezone="Europe/Paris")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialisation et arrêt de l'application."""
     logger.info("Démarrage de HomeNet Dashboard...")
     await init_db()
     try:
@@ -43,7 +42,7 @@ async def lifespan(app: FastAPI):
     scheduler.add_job(scan_network, "interval", minutes=5, id="network_scan")
     scheduler.add_job(run_speedtest, "interval", minutes=SPEEDTEST_INTERVAL_MIN, id="speedtest")
     scheduler.start()
-    logger.info("Scheduler démarré (scan: 5 min, speedtest: %d min)", SPEEDTEST_INTERVAL_MIN)
+    logger.info("Scheduler démarré (scan réseau: 5 min, speedtest: %d min)", SPEEDTEST_INTERVAL_MIN)
     yield
     scheduler.shutdown()
     logger.info("HomeNet Dashboard arrêté.")
@@ -69,31 +68,30 @@ app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
 @app.get("/")
 async def serve_frontend():
-    """Sert le dashboard HTML."""
     return FileResponse("frontend/index.html")
 
 
-@app.get("/api/devices", summary="Liste des appareils réseau")
+@app.get("/api/devices")
 async def api_devices():
     try:
         devices = await get_all_devices()
         return {"devices": devices, "online_count": sum(1 for d in devices if d["is_online"]), "total_count": len(devices)}
     except Exception as exc:
         logger.error("Erreur /api/devices : %s", exc)
-        raise HTTPException(status_code=500, detail="Erreur récupération appareils.")
+        raise HTTPException(status_code=500, detail="Erreur lors de la récupération des appareils.")
 
 
-@app.get("/api/speedtest", summary="Historique des débits")
+@app.get("/api/speedtest")
 async def api_speedtest_history(limit: int = 24):
     try:
         history = await get_speedtest_history(limit=limit)
         return {"history": history, "count": len(history)}
     except Exception as exc:
         logger.error("Erreur /api/speedtest : %s", exc)
-        raise HTTPException(status_code=500, detail="Erreur récupération historique.")
+        raise HTTPException(status_code=500, detail="Erreur historique speedtest.")
 
 
-@app.post("/api/speedtest/run", summary="Lancer un speedtest manuel")
+@app.post("/api/speedtest/run")
 async def api_speedtest_run():
     try:
         result = await run_speedtest()
@@ -103,29 +101,28 @@ async def api_speedtest_run():
         raise HTTPException(status_code=500, detail=f"Erreur speedtest : {exc}")
 
 
-@app.get("/api/cve/{hostname}", summary="Scan CVE d'une machine")
+@app.get("/api/cve/{hostname}")
 async def api_cve_scan(hostname: str):
     if not hostname or len(hostname) > 255:
         raise HTTPException(status_code=400, detail="Hostname invalide.")
     try:
-        result = await check_cve(hostname)
-        return result
+        return await check_cve(hostname)
     except Exception as exc:
         logger.error("Erreur /api/cve/%s : %s", hostname, exc)
         raise HTTPException(status_code=500, detail=f"Erreur scan CVE : {exc}")
 
 
-@app.get("/api/alerts", summary="Alertes actives")
+@app.get("/api/alerts")
 async def api_alerts(limit: int = 50):
     try:
         alerts = await get_alerts(limit=limit)
         return {"alerts": alerts, "count": len(alerts)}
     except Exception as exc:
         logger.error("Erreur /api/alerts : %s", exc)
-        raise HTTPException(status_code=500, detail="Erreur récupération alertes.")
+        raise HTTPException(status_code=500, detail="Erreur alertes.")
 
 
-@app.get("/api/health", summary="Statut du serveur")
+@app.get("/api/health")
 async def api_health():
     return {"status": "ok", "version": "1.0.0"}
 

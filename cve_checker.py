@@ -34,7 +34,9 @@ def _extract_cpe_keywords(host_data: dict) -> list[str]:
             product = info.get("product", "").strip()
             version = info.get("version", "").strip()
             if product:
-                kw = product + (f" {version}" if version else "")
+                kw = product
+                if version:
+                    kw += f" {version}"
                 keywords.append(kw)
     if "osmatch" in host_data:
         for osmatch in host_data["osmatch"][:2]:
@@ -62,11 +64,12 @@ async def _query_nvd(keyword: str, client: httpx.AsyncClient) -> list[dict]:
         cve_id = cve_data.get("id", "N/A")
         descriptions = cve_data.get("descriptions", [])
         description = next((d["value"] for d in descriptions if d.get("lang") == "en"),
-                           descriptions[0]["value"] if descriptions else "No description.")
-        cvss_score, severity = None, "unknown"
+                           descriptions[0]["value"] if descriptions else "Aucune description.")
+        cvss_score = None
+        severity = "unknown"
         metrics = cve_data.get("metrics", {})
-        for key in ("cvssMetricV31", "cvssMetricV30", "cvssMetricV2"):
-            entries = metrics.get(key, [])
+        for cvss_version in ("cvssMetricV31", "cvssMetricV30", "cvssMetricV2"):
+            entries = metrics.get(cvss_version, [])
             if entries:
                 cvss_data = entries[0].get("cvssData", {})
                 cvss_score = cvss_data.get("baseScore")
@@ -74,10 +77,10 @@ async def _query_nvd(keyword: str, client: httpx.AsyncClient) -> list[dict]:
                 break
         severity = severity.lower()
         if cvss_score is not None:
-            if cvss_score >= 9.0: severity = "critical"
+            if cvss_score >= 9.0:   severity = "critical"
             elif cvss_score >= 7.0: severity = "high"
             elif cvss_score >= 4.0: severity = "medium"
-            elif cvss_score > 0: severity = "low"
+            elif cvss_score > 0:    severity = "low"
         cves.append({
             "cve_id": cve_id,
             "description": description[:300] + ("..." if len(description) > 300 else ""),
@@ -89,28 +92,23 @@ async def _query_nvd(keyword: str, client: httpx.AsyncClient) -> list[dict]:
 
 
 async def check_cve(hostname: str) -> dict:
-    """Scanne les services d'une machine et retourne les CVEs associées."""
+    """Scan des services + recherche CVE sur la cible."""
     loop = asyncio.get_event_loop()
     host_data = await loop.run_in_executor(None, _run_service_scan, hostname)
     if not host_data:
         return {"target": hostname, "services_detected": [], "cves": [],
                 "error": f"Hôte {hostname} inaccessible ou aucun service détecté."}
-
     keywords = _extract_cpe_keywords(host_data)
-    logger.info("%d services sur %s : %s", len(keywords), hostname, keywords)
-
     all_cves: list[dict] = []
     seen_ids: set[str] = set()
     async with httpx.AsyncClient() as client:
-        results = await asyncio.gather(*[_query_nvd(kw, client) for kw in keywords[:10]],
-                                       return_exceptions=True)
+        results = await asyncio.gather(*[_query_nvd(kw, client) for kw in keywords[:10]], return_exceptions=True)
     for result in results:
         if isinstance(result, list):
             for cve in result:
                 if cve["cve_id"] not in seen_ids:
                     all_cves.append(cve)
                     seen_ids.add(cve["cve_id"])
-
     all_cves.sort(key=lambda c: c.get("cvss_score") or 0, reverse=True)
     return {
         "target": hostname,

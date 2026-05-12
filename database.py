@@ -51,30 +51,27 @@ async def init_db() -> None:
 
 
 async def upsert_device(ip: str, mac: str, hostname: str, vendor: str) -> dict:
-    """Insère ou met à jour un appareil. Retourne is_new=True si première apparition."""
     now = datetime.utcnow().isoformat()
     async with aiosqlite.connect(DATABASE_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute("SELECT * FROM devices WHERE ip = ?", (ip,)) as cur:
             existing = await cur.fetchone()
         if existing is None:
-            await db.execute(
-                "INSERT INTO devices (ip, mac, hostname, vendor, is_online, is_new, first_seen, last_seen) VALUES (?, ?, ?, ?, 1, 1, ?, ?)",
-                (ip, mac, hostname, vendor, now, now),
-            )
+            await db.execute("""
+                INSERT INTO devices (ip, mac, hostname, vendor, is_online, is_new, first_seen, last_seen)
+                VALUES (?, ?, ?, ?, 1, 1, ?, ?)
+            """, (ip, mac, hostname, vendor, now, now))
             is_new = True
         else:
-            await db.execute(
-                "UPDATE devices SET mac=?, hostname=?, vendor=?, is_online=1, last_seen=? WHERE ip=?",
-                (mac, hostname, vendor, now, ip),
-            )
+            await db.execute("""
+                UPDATE devices SET mac=?, hostname=?, vendor=?, is_online=1, last_seen=? WHERE ip=?
+            """, (mac, hostname, vendor, now, ip))
             is_new = bool(existing["is_new"])
         await db.commit()
     return {"ip": ip, "is_new": is_new}
 
 
 async def mark_devices_offline(active_ips: list[str]) -> list[str]:
-    """Marque offline les appareils absents du scan. Retourne les IPs passées offline."""
     now = datetime.utcnow().isoformat()
     offline_ips: list[str] = []
     async with aiosqlite.connect(DATABASE_PATH) as db:
@@ -83,17 +80,13 @@ async def mark_devices_offline(active_ips: list[str]) -> list[str]:
             online = await cur.fetchall()
         for row in online:
             if row["ip"] not in active_ips:
-                await db.execute(
-                    "UPDATE devices SET is_online=0, last_seen=? WHERE ip=?",
-                    (now, row["ip"]),
-                )
+                await db.execute("UPDATE devices SET is_online=0, last_seen=? WHERE ip=?", (now, row["ip"]))
                 offline_ips.append(row["ip"])
         await db.commit()
     return offline_ips
 
 
 async def get_all_devices() -> list[dict]:
-    """Retourne tous les appareils enregistrés."""
     async with aiosqlite.connect(DATABASE_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute("SELECT * FROM devices ORDER BY is_online DESC, last_seen DESC") as cur:
@@ -102,45 +95,40 @@ async def get_all_devices() -> list[dict]:
 
 
 async def save_speedtest(ping_ms: float, download_mbps: float, upload_mbps: float) -> None:
-    """Enregistre un résultat de speedtest."""
     now = datetime.utcnow().isoformat()
     async with aiosqlite.connect(DATABASE_PATH) as db:
-        await db.execute(
-            "INSERT INTO speedtest_history (timestamp, ping_ms, download_mbps, upload_mbps) VALUES (?, ?, ?, ?)",
-            (now, ping_ms, download_mbps, upload_mbps),
-        )
+        await db.execute("""
+            INSERT INTO speedtest_history (timestamp, ping_ms, download_mbps, upload_mbps)
+            VALUES (?, ?, ?, ?)
+        """, (now, ping_ms, download_mbps, upload_mbps))
         await db.commit()
 
 
 async def get_speedtest_history(limit: int = 24) -> list[dict]:
-    """Retourne les N derniers résultats de speedtest."""
     async with aiosqlite.connect(DATABASE_PATH) as db:
         db.row_factory = aiosqlite.Row
-        async with db.execute(
-            "SELECT * FROM speedtest_history ORDER BY timestamp DESC LIMIT ?", (limit,)
-        ) as cur:
+        async with db.execute("""
+            SELECT * FROM speedtest_history ORDER BY timestamp DESC LIMIT ?
+        """, (limit,)) as cur:
             rows = await cur.fetchall()
     return [dict(r) for r in reversed(rows)]
 
 
 async def create_alert(level: str, category: str, message: str) -> None:
-    """Crée une nouvelle alerte."""
     now = datetime.utcnow().isoformat()
     async with aiosqlite.connect(DATABASE_PATH) as db:
-        await db.execute(
-            "INSERT INTO alerts (timestamp, level, category, message) VALUES (?, ?, ?, ?)",
-            (now, level, category, message),
-        )
+        await db.execute("""
+            INSERT INTO alerts (timestamp, level, category, message) VALUES (?, ?, ?, ?)
+        """, (now, level, category, message))
         await db.commit()
     logger.warning("[ALERTE %s] %s : %s", level.upper(), category, message)
 
 
 async def get_alerts(limit: int = 50) -> list[dict]:
-    """Retourne les alertes non résolues les plus récentes."""
     async with aiosqlite.connect(DATABASE_PATH) as db:
         db.row_factory = aiosqlite.Row
-        async with db.execute(
-            "SELECT * FROM alerts WHERE resolved = 0 ORDER BY timestamp DESC LIMIT ?", (limit,)
-        ) as cur:
+        async with db.execute("""
+            SELECT * FROM alerts WHERE resolved = 0 ORDER BY timestamp DESC LIMIT ?
+        """, (limit,)) as cur:
             rows = await cur.fetchall()
     return [dict(r) for r in rows]

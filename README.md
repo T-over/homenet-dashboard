@@ -1,7 +1,6 @@
 # 🏠 HomeNet Dashboard
 
-Application web locale auto-hébergée pour superviser votre réseau domestique :
-scan des appareils, mesures de débit, détection de CVEs et alertes en temps réel.
+Application web locale auto-hébergée pour superviser votre réseau domestique : scan des appareils, mesures de débit, détection de CVEs et alertes en temps réel.
 
 ```
 ╔══════════════════════════════════════════════════════════════╗
@@ -11,20 +10,20 @@ scan des appareils, mesures de débit, détection de CVEs et alertes en temps r�
 ║       8        │   94.2 Mbps  │  42.1 Mbps  │      0       ║
 ╠══════════════════════════════════════════════════════════════╣
 ║  🖧 Carte réseau                                             ║
-║  192.168.1.1   │ router      │ Xiaomi    │ ● En ligne       ║
-║  192.168.1.12  │ nas-theo    │ Synology  │ ● En ligne       ║
-║  192.168.1.45  │ android-s24 │ Samsung   │ ○ Hors ligne     ║
+║  192.168.1.1   │ router       │ Xiaomi       │ ● En ligne   ║
+║  192.168.1.12  │ nas-theo     │ Synology     │ ● En ligne   ║
+║  192.168.1.45  │ android-s24  │ Samsung      │ ○ Hors ligne ║
 ╠══════════════════════════════════════════════════════════════╣
 ║  📶 Graphique débits (24h)   │  🔔 Alertes                  ║
-║  ▁▂▄▆▇▆▅▄▃▄▅▆▇▇▆▅           │  [HAUTE] Nouvel appareil    ║
+║  ▁▂▄▆▇▆▅▄▃▄▅▆▇▇▆▅           │  [HAUTE] Nouvel appareil     ║
 ╚══════════════════════════════════════════════════════════════╝
 ```
 
 ## Prérequis
 
 - **Python 3.11+**
-- **nmap** installé système : `sudo apt install nmap`
-- Droits sudo/root pour les scans réseau
+- **nmap** installé sur le système : `sudo apt install nmap`
+- Accès root ou sudo pour les scans réseau
 
 ## Installation
 
@@ -33,22 +32,22 @@ scan des appareils, mesures de débit, détection de CVEs et alertes en temps r�
 git clone https://github.com/T-over/homenet-dashboard.git
 cd homenet-dashboard
 
-# 2. Environnement virtuel
+# 2. Créer un environnement virtuel
 python3 -m venv .venv
 source .venv/bin/activate
 
-# 3. Dépendances
+# 3. Installer les dépendances
 pip install -r requirements.txt
 
-# 4. Configuration
+# 4. Configurer l'environnement
 cp .env.example .env
-nano .env  # Remplir NETWORK_RANGE, ALERT_THRESHOLD_MBPS, etc.
+nano .env
 
-# 5. Lancer (nécessite root pour nmap)
+# 5. Lancer le serveur
 sudo .venv/bin/python main.py
 ```
 
-Ouvrez `http://localhost:8000` dans votre navigateur.
+Ouvrez ensuite `http://localhost:8000` dans votre navigateur.
 
 ## Configuration systemd
 
@@ -73,34 +72,27 @@ StandardError=journal
 WantedBy=multi-user.target
 ```
 
+Activez le service :
+
 ```bash
 sudo cp -r . /opt/homenet-dashboard
 sudo systemctl daemon-reload
-sudo systemctl enable --now homenet
-sudo systemctl status homenet
+sudo systemctl enable homenet
+sudo systemctl start homenet
 ```
 
 ## Accès depuis votre téléphone (Tailscale)
 
-```bash
-# Sur la VM Ubuntu
-curl -fsSL https://tailscale.com/install.sh | sh
-sudo tailscale up
-tailscale ip -4   # Notez l'IP (ex: 100.64.0.2)
-```
-
-1. Installez **Tailscale** sur votre téléphone
-2. Connectez les deux appareils au même compte
-3. Accédez via `http://100.64.0.2:8000`
+1. Installer Tailscale sur la VM : `curl -fsSL https://tailscale.com/install.sh | sh && sudo tailscale up`
+2. Installer Tailscale sur votre téléphone
+3. Récupérer l'IP Tailscale : `tailscale ip -4`
+4. Accéder depuis le téléphone : `http://<IP-TAILSCALE>:8000`
 
 ## Sécurité
 
-> ⚠️ **Ne jamais exposer ce dashboard directement sur Internet** sans authentification.
-
+⚠️ **Ne jamais exposer ce dashboard directement sur Internet** sans authentification forte.
 - Accès exclusivement via VPN (Tailscale, WireGuard)
-- Le dashboard expose des informations sensibles sur votre réseau interne
-- Si besoin d'exposition externe : reverse proxy nginx + Basic Auth ou OAuth2
-- Ne pas ouvrir le port 8000 dans les règles NAT de votre box
+- Ne pas ouvrir le port 8000 dans votre box/routeur
 
 ## Variables d'environnement
 
@@ -111,9 +103,5 @@ tailscale ip -4   # Notez l'IP (ex: 100.64.0.2)
 | `ALERT_THRESHOLD_MBPS` | Seuil débit bas (Mbps) | `50.0` |
 | `DATABASE_PATH` | Chemin base SQLite | `homenet.db` |
 | `HOST` | Interface d'écoute | `0.0.0.0` |
-| `PORT` | Port serveur | `8000` |
+| `PORT` | Port du serveur | `8000` |
 | `NVD_API_KEY` | Clé API NIST (optionnel) | — |
-
-## Licence
-
-MIT — Projet personnel, utilisation à vos risques et périls.

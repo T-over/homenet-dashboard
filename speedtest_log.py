@@ -1,5 +1,5 @@
 """
-speedtest_log.py — Mesure de débit avec speedtest-cli + sauvegarde SQLite
+speedtest_log.py — Mesure de débit avec speedtest-cli + sauvegarde en SQLite
 """
 
 import asyncio
@@ -33,7 +33,7 @@ def _run_speedtest() -> dict:
 
 async def run_speedtest() -> dict:
     """
-    Lance le speedtest dans un thread, sauvegarde le résultat,
+    Lance le speedtest dans un thread (non bloquant), sauvegarde le résultat,
     génère une alerte si le débit est trop faible.
     """
     loop = asyncio.get_event_loop()
@@ -56,10 +56,8 @@ async def run_speedtest() -> dict:
             category="low_bandwidth",
             message=(
                 f"Débit descendant critique : {result['download_mbps']:.1f} Mbps "
-                f"(seuil : {ALERT_THRESHOLD_MBPS} Mbps)"
+                f"(seuil configuré : {ALERT_THRESHOLD_MBPS} Mbps)"
             ),
         )
-        logger.warning("Alerte débit : %.1f Mbps < seuil %.1f Mbps",
-                       result["download_mbps"], ALERT_THRESHOLD_MBPS)
 
     return result
