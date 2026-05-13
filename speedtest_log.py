@@ -7,7 +7,7 @@ import logging
 import speedtest as st_lib
 
 from config import ALERT_THRESHOLD_MBPS
-from database import save_speedtest, create_alert
+from database import save_speedtest, add_alert
 
 logger = logging.getLogger(__name__)
 
@@ -46,9 +46,8 @@ async def run_speedtest() -> dict:
     )
 
     if result["download_mbps"] < ALERT_THRESHOLD_MBPS:
-        await create_alert(
+        await add_alert(
             level="high",
-            category="low_bandwidth",
             message=(
                 f"Débit descendant critique : {result['download_mbps']:.1f} Mbps "
                 f"(seuil : {ALERT_THRESHOLD_MBPS} Mbps)"
