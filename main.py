@@ -76,7 +76,7 @@ async def lifespan(app: FastAPI):
     await init_db()
     scheduler.add_job(scan_network, "interval", minutes=5, id="scan_reseau")
     scheduler.add_job(run_speedtest, "interval", minutes=SPEEDTEST_INTERVAL_MIN, id="speedtest")
-        scheduler.add_job(scan_all_cves, "interval", hours=24, id="cve_scan_auto")
+    scheduler.add_job(scan_all_cves, "interval", hours=24, id="cve_scan_auto")
     scheduler.start()
     logger.info("Scheduler démarré (scan: 5min, speedtest: %dmin)", SPEEDTEST_INTERVAL_MIN)
     yield
