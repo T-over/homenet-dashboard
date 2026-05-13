@@ -1,1029 +1,311 @@
 <!DOCTYPE html>
 <html lang="fr" data-theme="dark">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HomeNet Dashboard v2</title>
-
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&display=swap" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-
-  <style>
-    :root {
-      --bg: #0f1117;
-      --surface: #1a1d27;
-      --surface2: #20243a;
-      --border: rgba(255, 255, 255, 0.07);
-      --accent: #4f8ef7;
-      --green: #22c55e;
-      --red: #ef4444;
-      --yellow: #f59e0b;
-      --text: #e2e8f0;
-      --muted: #64748b;
-      --faint: #334155;
-      --radius: 0.75rem;
-      --font: 'Inter', sans-serif;
-      --transition: 180ms cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    [data-theme="light"] {
-      --bg: #f8fafc;
-      --surface: #ffffff;
-      --surface2: #f1f5f9;
-      --border: rgba(0, 0, 0, 0.08);
-      --text: #0f172a;
-      --muted: #475569;
-      --faint: #cbd5e1;
-    }
-
-    *, *::before, *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    html { scroll-behavior: smooth; }
-
-    body {
-      font-family: var(--font);
-      background: var(--bg);
-      color: var(--text);
-      font-size: 14px;
-      line-height: 1.6;
-      min-height: 100dvh;
-    }
-
-    .app {
-      display: grid;
-      grid-template-rows: 56px 1fr;
-      min-height: 100dvh;
-    }
-
-    .header {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 1.5rem;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
-
-    .header-left,
-    .header-right,
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
-
-    .logo {
-      gap: 0.5rem;
-      font-weight: 700;
-      font-size: 1rem;
-      letter-spacing: -0.02em;
-    }
-
-    .logo svg { color: var(--accent); }
-
-    .clock {
-      font-size: 0.75rem;
-      color: var(--muted);
-      font-variant-numeric: tabular-nums;
-    }
-
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--green);
-      box-shadow: 0 0 6px var(--green);
-      animation: pulse 2s infinite;
-    }
-
-    .status-dot.offline {
-      background: var(--red);
-      box-shadow: 0 0 6px var(--red);
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
-    }
-
-    .theme-toggle {
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 0.4rem 0.7rem;
-      border-radius: 999px;
-      cursor: pointer;
-      font-size: 0.8rem;
-    }
-
-    .main {
-      max-width: 1500px;
-      margin: 0 auto;
-      width: 100%;
-      padding: 1.5rem;
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
-    }
-
-    .kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 1rem;
-    }
-
-    .three-col {
-      display: grid;
-      grid-template-columns: 1.4fr 1fr 1fr;
-      gap: 1rem;
-      align-items: start;
-    }
-
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.25rem;
-      min-height: 100%;
-    }
-
-    .kpi-card {
-      opacity: 0;
-      transform: translateY(12px);
-      animation: fadeUp 0.4s var(--transition) forwards;
-    }
-
-    .kpi-card:nth-child(1) { animation-delay: 0.05s; }
-    .kpi-card:nth-child(2) { animation-delay: 0.10s; }
-    .kpi-card:nth-child(3) { animation-delay: 0.15s; }
-    .kpi-card:nth-child(4) { animation-delay: 0.20s; }
-
-    @keyframes fadeUp {
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .kpi-label {
-      font-size: 0.72rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      margin-bottom: 0.6rem;
-    }
-
-    .kpi-value {
-      font-size: 2rem;
-      line-height: 1;
-      font-weight: 700;
-      font-variant-numeric: tabular-nums;
-      margin-bottom: 0.35rem;
-    }
-
-    .kpi-sub {
-      font-size: 0.75rem;
-      color: var(--muted);
-    }
-
-    .kpi-accent { color: var(--accent); }
-    .kpi-green { color: var(--green); }
-    .kpi-red { color: var(--red); }
-
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 0.75rem;
-      margin-bottom: 1rem;
-    }
-
-    .card-title {
-      font-size: 0.95rem;
-      font-weight: 700;
-    }
-
-    .card-actions {
-      display: flex;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-    }
-
-    .btn {
-      border: 1px solid var(--border);
-      background: var(--surface2);
-      color: var(--text);
-      border-radius: 999px;
-      padding: 0.45rem 0.8rem;
-      cursor: pointer;
-      font-size: 0.78rem;
-      transition: var(--transition);
-    }
-
-    .btn:hover {
-      transform: translateY(-1px);
-      border-color: rgba(79, 142, 247, 0.35);
-    }
-
-    .btn-primary {
-      background: rgba(79, 142, 247, 0.14);
-      color: var(--accent);
-    }
-
-    .toolbar {
-      display: flex;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-      margin-bottom: 1rem;
-    }
-
-    .input,
-    .select {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      color: var(--text);
-      border-radius: 0.6rem;
-      padding: 0.65rem 0.8rem;
-      font: inherit;
-    }
-
-    .input {
-      min-width: 240px;
-      flex: 1;
-    }
-
-    .table-wrap {
-      overflow-x: auto;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    th {
-      text-align: left;
-      font-size: 0.68rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      padding: 0 0.75rem 0.75rem;
-      border-bottom: 1px solid var(--border);
-    }
-
-    td {
-      padding: 0.75rem;
-      border-bottom: 1px solid var(--border);
-      vertical-align: middle;
-      font-size: 0.82rem;
-    }
-
-    tr:last-child td { border-bottom: none; }
-
-    .badge {
-      display: inline-block;
-      padding: 0.2rem 0.5rem;
-      border-radius: 999px;
-      font-size: 0.66rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .badge-online { background: rgba(34, 197, 94, 0.12); color: var(--green); }
-    .badge-offline { background: rgba(239, 68, 68, 0.12); color: var(--red); }
-    .badge-new { background: rgba(79, 142, 247, 0.14); color: var(--accent); }
-    .badge-critical { background: rgba(239, 68, 68, 0.14); color: var(--red); }
-    .badge-high { background: rgba(245, 158, 11, 0.18); color: var(--yellow); }
-    .badge-medium { background: rgba(79, 142, 247, 0.14); color: var(--accent); }
-    .badge-low { background: rgba(34, 197, 94, 0.12); color: var(--green); }
-
-    .alert-list {
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-    }
-
-    .alert-item {
-      border: 1px solid var(--border);
-      background: var(--surface2);
-      border-radius: 0.8rem;
-      padding: 0.8rem;
-    }
-
-    .alert-meta {
-      display: flex;
-      gap: 0.5rem;
-      align-items: center;
-      margin-bottom: 0.35rem;
-      flex-wrap: wrap;
-    }
-
-    .muted {
-      color: var(--muted);
-      font-size: 0.75rem;
-    }
-
-    .chart-wrap {
-      position: relative;
-      height: 220px;
-    }
-
-    .empty {
-      color: var(--muted);
-      padding: 1rem 0;
-      font-size: 0.85rem;
-    }
-
-    .grid-2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
-    }
-
-    @media (max-width: 1100px) {
-      .three-col {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    @media (max-width: 900px) {
-      .kpi-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-
-      .grid-2 {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    @media (max-width: 640px) {
-      .main { padding: 1rem; }
-      .header { padding: 0 1rem; }
-      .kpi-grid { grid-template-columns: 1fr; }
-      .logo span { display: none; }
-    }
-  
-/* Rapport CVE */
-.cve-devices-list { margin-top: 1rem; }
-.cve-device-card {
-  background: var(--surface2);
-  padding: 1rem;
-  margin-bottom: 1rem;
-  border-radius: 0.5rem;
-  border-left: 4px solid var(--red);
-}
-.cve-device-card h4 { 
-  margin-bottom: 0.5rem; 
-  color: var(--text);
-}
-.cve-list {
-  list-style: none;
-  padding: 0;
-  margin-top: 0.5rem;
-}
-.cve-list li {
-  padding: 0.5rem;
-  margin-bottom: 0.5rem;
-  background: var(--surface);
-  border-radius: 0.3rem;
-  border-left: 2px solid var(--accent);
-}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HomeNet Dashboard v2</title>
+    <style>
+        :root {
+            --bg: #0f1117;
+            --surface: #1a1d27;
+            --surface2: #202430;
+            --text: #e4e6eb;
+            --muted: #8b92a4;
+            --accent: #1e90ff;
+            --green: #2ecc71;
+            --red: #e74c3c;
+            --orange: #f39c12;
+            --border: rgba(255,255,255,0.1);
+        }
+        
+        [data-theme="light"] {
+            --bg: #f5f7fa;
+            --surface: #ffffff;
+            --surface2: #f0f2f5;
+            --text: #1a1d27;
+            --muted: #65676b;
+            --border: rgba(0,0,0,0.1);
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        
+        .container { max-width: 1400px; margin: 0 auto; padding: 1rem; }
+        
+        header {
+            background: var(--surface);
+            padding: 1rem;
+            margin-bottom: 2rem;
+            border-radius: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        h1 { font-size: 1.8rem; font-weight: 600; }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .card {
+            background: var(--surface);
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border);
+        }
+        
+        .card h3 { font-size: 0.875rem; color: var(--muted); margin-bottom: 0.5rem; text-transform: uppercase; }
+        .card-value { font-size: 2rem; font-weight: 700; color: var(--accent); }
+        
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            background: var(--accent);
+            color: white;
+        }
+        
+        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-sm { padding: 0.25rem 0.75rem; font-size: 0.8rem; }
+        
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background: var(--surface2); font-weight: 600; }
+        tr:hover { background: var(--surface2); }
+        
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .badge.online { background: var(--green); color: white; }
+        .badge.offline { background: var(--red); color: white; }
+        
+        .loading { text-align: center; padding: 2rem; color: var(--muted); }
+        .error { color: var(--red); padding: 1rem; }
+        
+        #devicesTable tbody {
+            display: block;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        #devicesTable thead, #devicesTable tbody tr {
+            display: table;
+            width: 100%;
+            table-layout: fixed;
+        }
     </style>
 </head>
 <body>
-  <div class="app">
-    <header class="header">
-      <div class="header-left">
-        <div class="logo">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-            <path d="M9 22V12h6v10"></path>
-          </svg>
-          <span>HomeNet v2</span>
+    <div class="container">
+        <header>
+            <h1>🏠 HomeNet Dashboard v2</h1>
+            <div>
+                <button class="btn" id="refreshBtn">🔄 Scan Réseau</button>
+                <button class="btn" id="themeToggle">🌙</button>
+            </div>
+        </header>
+        
+        <div class="stats">
+            <div class="card">
+                <h3>Appareils en ligne</h3>
+                <div class="card-value" id="onlineCount">0</div>
+            </div>
+            <div class="card">
+                <h3>Download actuel</h3>
+                <div class="card-value" id="downloadSpeed">— Mbps</div>
+                <button class="btn btn-sm" id="runSpeedtestBtn">▶ Lancer</button>
+            </div>
+            <div class="card">
+                <h3>Upload actuel</h3>
+                <div class="card-value" id="uploadSpeed">— Mbps</div>
+            </div>
+            <div class="card">
+                <h3>CVEs critiques</h3>
+                <div class="card-value" id="cveCount">0</div>
+            </div>
         </div>
-      </div>
-
-      <div class="header-right">
-        <button class="theme-toggle" id="themeToggle" type="button">🌙 / ☀️</button>
-        <span class="clock" id="clock">--:--:--</span>
-        <div class="status-dot" id="serverDot" title="Serveur en ligne"></div>
-      </div>
-    </header>
-
-    <main class="main">
-      <section class="kpi-grid">
-        <div class="card kpi-card">
-          <div class="kpi-label">Appareils en ligne</div>
-          <div class="kpi-value kpi-accent" id="kpiOnline">—</div>
-          <div class="kpi-sub" id="kpiTotal">sur — connus</div>
-        </div>
-
-        <div class="card kpi-card">
-          <div class="kpi-label">Download actuel</div>
-          <div class="kpi-value kpi-green" id="kpiDown">—</div>
-          <div class="kpi-sub">Mbps</div>
-        </div>
-
-        <div class="card kpi-card">
-          <div class="kpi-label">Upload actuel</div>
-          <div class="kpi-value kpi-accent" id="kpiUp">—</div>
-          <div class="kpi-sub">Mbps</div>
-        </div>
-
-        <div class="card kpi-card">
-          <div class="kpi-label">CVEs critiques</div>
-          <div class="kpi-value kpi-red" id="kpiCve">—</div>
-          <div class="kpi-sub">scan disponible</div>
-        </div>
-      </section>
-
-      <section class="card">
-        <div class="card-header">
-          <div class="card-title">🗂 Carte réseau</div>
-          <div class="card-actions">
-            <button class="btn" id="exportCsvBtn" type="button">⬇ Export CSV</button>
-            <button class="btn btn-primary" id="refreshBtn" type="button">↻ Rafraîchir</button>
-          </div>
-        </div>
-
-        <div class="toolbar">
-          <input class="input" id="deviceSearch" type="text" placeholder="Filtrer par IP ou nom" />
-          <select class="select" id="statusFilter">
-            <option value="all">Tous les statuts</option>
-            <option value="online">En ligne</option>
-            <option value="offline">Hors ligne</option>
-          </select>
-        </div>
-
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>IP</th>
-                <th>Nom personnalisé</th>
-                <th>Hostname</th>
-                <th>Fabricant</th>
-                <th>Statut</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="devicesBody">
-              <tr><td colspan="6" class="empty">Chargement...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section class="three-col">
+        
         <div class="card">
-          <div class="card-header">
-            <div class="card-title">📈 Historique débits (24h)</div>
-            <div class="card-actions">
-              <button class="btn btn-primary" id="runSpeedtestBtn" type="button">▶ Lancer</button>
-            </div>
-          </div>
-          <div class="chart-wrap">
-            <canvas id="speedChart"></canvas>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">🔔 Alertes récentes</div>
-          </div>
-          <div id="alertsList" class="alert-list">
-            <div class="empty">Chargement...</div>
-          </div>
-        </div>
-
-        <div class="grid-2">
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">🔥 Heatmap débit (semaine)</div>
-            </div>
-            <div id="heatmapBox" class="empty">Chargement...</div>
-          </div>
-
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">🛡 Scan CVE</div>
-            </div>
-            <div class="toolbar" style="margin-bottom:0.75rem;">
-              <input class="input" id="cveTarget" type="text" placeholder="IP ou hostname" />
-              <button class="btn btn-primary" id="runCveBtn" type="button">Scanner</button>
-            </div>
-            <div id="cveStatus" class="muted">En attente d'un scan…</div>
-            <div id="cveResults" class="empty"></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Onglet Rapport CVE -->
-      <div id="cve-report" class="tab-content">
-        <div class="card">
-          <div class="card-header">
-            <h3>🛡️ Rapport CVE Consolidé</h3>
-            <p>Toutes les vulnérabilités détectées sur le réseau</p>
-          </div>
-          <div id="cveReportContainer" style="padding: 1rem;">
-            <p class="loading">Chargement...</p>
-          </div>
-        </div>
-      </div>
-    </main>
-  </div>
-
-  <script>
-    const API_BASE = "";
-
-    let devicesCache = [];
-    let speedChart = null;
-
-    function qs(selector) {
-      return document.querySelector(selector);
-    }
-
-    function formatDate(value) {
-      if (!value) return "—";
-      try {
-        return new Date(value).toLocaleString("fr-FR");
-      } catch {
-        return value;
-      }
-    }
-
-    async function fetchJSON(path, options = {}) {
-      const response = await fetch(API_BASE + path, options);
-      if (!response.ok) {
-        throw new Error("HTTP " + response.status);
-      }
-      return response.json();
-    }
-
-    function updateClock() {
-      qs("#clock").textContent = new Date().toLocaleTimeString("fr-FR");
-    }
-
-    function setupThemeToggle() {
-      const root = document.documentElement;
-      const button = qs("#themeToggle");
-      button.addEventListener("click", () => {
-        const next = root.getAttribute("data-theme") === "light" ? "dark" : "light";
-        root.setAttribute("data-theme", next);
-      });
-    }
-
-    async function checkHealth() {
-      try {
-        await fetchJSON("/api/health");
-        qs("#serverDot").classList.remove("offline");
-      } catch {
-        qs("#serverDot").classList.add("offline");
-      }
-    }
-
-    function deviceRow(device) {
-      const alias = device.alias || "—";
-      const hostname = device.hostname || "—";
-      const vendor = device.vendor || "Inconnu";
-      const statusClass = device.is_online ? "badge-online" : "badge-offline";
-      const statusText = device.is_online ? "En ligne" : "Hors ligne";
-      const newBadge = device.is_new ? ' <span class="badge badge-new">Nouveau</span>' : "";
-
-      return `
-        <tr>
-          <td>${device.ip}</td>
-          <td>${alias}</td>
-          <td>${hostname}</td>
-          <td>${vendor}</td>
-          <td>
-            <span class="badge ${statusClass}">${statusText}</span>${newBadge}
-          </td>
-          <td>
-            <button class="btn btn-sm" onclick="runDeviceCve('${device.ip}', '${hostname}')">🛡️ Scan CVE</button>
-          </td>
-        </tr>
-      `;
-    }
-
-    function renderDevices() {
-      const search = qs("#deviceSearch").value.trim().toLowerCase();
-      const status = qs("#statusFilter").value;
-
-      const filtered = devicesCache.filter((device) => {
-        const haystack = `${device.ip} ${device.alias || ""} ${device.hostname || ""}`.toLowerCase();
-        const statusOk =
-          status === "all" ||
-          (status === "online" && device.is_online) ||
-          (status === "offline" && !device.is_online);
-        return haystack.includes(search) && statusOk;
-      });
-
-      const body = qs("#devicesBody");
-
-      if (!filtered.length) {
-        body.innerHTML = `<tr><td colspan="6" class="empty">Aucun appareil trouvé.</td></tr>`;
-        return;
-      }
-
-      body.innerHTML = filtered.map(deviceRow).join("");
-    }
-
-    async function loadDevices() {
-      try {
-        const data = await fetchJSON("/api/devices");
-        devicesCache = data.devices || [];
-        const onlineCount = devicesCache.filter((d) => d.is_online).length;
-
-        qs("#kpiOnline").textContent = onlineCount;
-        qs("#kpiTotal").textContent = `sur ${devicesCache.length} connus`;
-
-        renderDevices();
-      } catch (error) {
-        qs("#devicesBody").innerHTML = `<tr><td colspan="6" class="empty">Erreur de chargement des appareils.</td></tr>`;
-      }
-    }
-
-    async function loadSpeedtests() {
-      try {
-        const data = await fetchJSON("/api/speedtest");
-        const history = data.history || [];
-
-        if (history.length) {
-          const last = history[history.length - 1];
-          qs("#kpiDown").textContent = Number(last.download_mbps || 0).toFixed(1);
-          qs("#kpiUp").textContent = Number(last.upload_mbps || 0).toFixed(1);
-        } else {
-          qs("#kpiDown").textContent = "—";
-          qs("#kpiUp").textContent = "—";
-        }
-
-        const ctx = qs("#speedChart").getContext("2d");
-        const labels = history.map((item) => formatDate(item.timestamp));
-        const download = history.map((item) => item.download_mbps);
-        const upload = history.map((item) => item.upload_mbps);
-        const ping = history.map((item) => item.ping_ms);
-
-        if (speedChart) {
-          speedChart.destroy();
-        }
-
-        speedChart = new Chart(ctx, {
-          type: "line",
-          data: {
-            labels,
-            datasets: [
-              {
-                label: "Download",
-                data: download,
-                borderColor: "#22c55e",
-                backgroundColor: "rgba(34,197,94,0.12)",
-                tension: 0.35,
-                fill: true
-              },
-              {
-                label: "Upload",
-                data: upload,
-                borderColor: "#4f8ef7",
-                backgroundColor: "rgba(79,142,247,0.10)",
-                tension: 0.35,
-                fill: true
-              },
-              {
-                label: "Ping",
-                data: ping,
-                borderColor: "#f59e0b",
-                tension: 0.35,
-                fill: false
-              }
-            ]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: {
-                labels: {
-                  color: getComputedStyle(document.documentElement).getPropertyValue("--muted")
-                }
-              }
-            },
-            scales: {
-              x: {
-                ticks: { color: getComputedStyle(document.documentElement).getPropertyValue("--muted") },
-                grid: { color: "rgba(255,255,255,0.04)" }
-              },
-              y: {
-                ticks: { color: getComputedStyle(document.documentElement).getPropertyValue("--muted") },
-                grid: { color: "rgba(255,255,255,0.04)" }
-              }
-            }
-          }
-        });
-      } catch (error) {
-        qs("#kpiDown").textContent = "—";
-        qs("#kpiUp").textContent = "—";
-      }
-    }
-
-    
-    async function loadCveReport() {
-      try {
-        const data = await fetchJSON("/api/cve/all");
-        const container = qs("#cveReportContainer");
-        
-        if (!data.devices || data.devices.length === 0) {
-          container.innerHTML = "<p>✅ Aucune CVE détectée sur le réseau</p>";
-          return;
-        }
-        
-        let html = `<div style="margin-bottom: 1rem;"><strong>Total: ${data.total} CVE(s) trouvée(s) sur ${data.devices.length} appareil(s)</strong></div>`;
-        html += '<div class="cve-devices-list">';
-        
-        for (const device of data.devices) {
-          html += `
-            <div class="cve-device-card">
-              <h4>🖥️ ${device.device} <span style="color: var(--muted); font-size: 0.9em;">(${device.ip})</span></h4>
-              <p style="color: var(--red); font-weight: bold;">⚠️ ${device.count} CVE(s) active(s)</p>
-              <ul class="cve-list">
-          `;
-          
-          for (const cve of device.cves) {
-            const severityColor = cve.severity === 'CRITICAL' ? 'var(--red)' : 
-                                  cve.severity === 'HIGH' ? 'orange' : 
-                                  cve.severity === 'MEDIUM' ? 'yellow' : 'var(--muted)';
-            html += `
-              >
-                <strong style="color: ${severityColor}">${cve.cve_id}</strong> 
-                <span style="background: ${severityColor}; color: black; padding: 2px 6px; border-radius: 3px; font-size: 0.8em;">${cve.severity}</span>
-                <span style="color: var(--muted);">Score: ${cve.cvss_score}</span>
-                <br>
-                <span style="font-size: 0.9em;">${cve.description || 'Pas de description'}</span>
-              </li>
-            `;
-          }
-          
-          html += '</ul></div>';
-        }
-        
-        html += '</div>';
-        container.innerHTML = html;
-      } catch (error) {
-        console.error("Erreur chargement rapport CVE:", error);
-        qs("#cveReportContainer").innerHTML = '<p class="error">❌ Erreur de chargement</p>';
-      }
-    }
-
-    async function loadAlerts() {
-      try {
-        const data = await fetchJSON("/api/alerts");
-        const alerts = data.alerts || [];
-        const box = qs("#alertsList");
-
-        if (!alerts.length) {
-          box.innerHTML = `<div class="empty">Aucune alerte récente.</div>`;
-          return;
-        }
-
-        box.innerHTML = alerts.slice(0, 8).map((alert) => {
-          const level = (alert.level || "low").toLowerCase();
-          const badgeClass =
-            level === "critical" ? "badge-critical" :
-            level === "high" ? "badge-high" :
-            level === "medium" ? "badge-medium" : "badge-low";
-
-          return `
-            <div class="alert-item">
-              <div class="alert-meta">
-                <span class="badge ${badgeClass}">${level}</span>
-                <span class="muted">${formatDate(alert.timestamp)}</span>
-              </div>
-              <div>${alert.message}</div>
-            </div>
-          `;
-        }).join("");
-      } catch (error) {
-        qs("#alertsList").innerHTML = `<div class="empty">Impossible de charger les alertes.</div>`;
-      }
-    }
-
-    async function loadHeatmap() {
-      const box = qs("#heatmapBox");
-      try {
-        const data = await fetchJSON("/api/speedtest/heatmap");
-        const items = data.heatmap || [];
-
-        if (!items.length) {
-          box.innerHTML = `<div class="empty">Pas encore assez de données.</div>`;
-          return;
-        }
-
-        box.innerHTML = `
-          <div class="muted">
-            ${items.length} point(s) agrégé(s) disponibles.
-          </div>
-        `;
-      } catch (error) {
-        box.innerHTML = `<div class="empty">Heatmap indisponible.</div>`;
-      }
-    }
-
-    
-    async function runDeviceCve(ip, hostname) {
-      try {
-        const btn = event.target;
-        btn.disabled = true;
-        btn.textContent = "⏳";
-        
-        const result = await fetchJSON(`/api/cve/${hostname}?device_ip=${ip}`);
-        
-        if (result.vulnerabilities && result.vulnerabilities.length > 0) {
-          alert(`✅ ${result.count} CVE(s) trouvée(s) pour ${hostname}\nScan sauvegardé en base de données`);
-          await loadAlerts();
-        } else {
-          alert(`ℹ️ Aucune CVE trouvée pour ${hostname}`);
-        }
-        
-        btn.disabled = false;
-        btn.textContent = "🛡️ Scan CVE";
-      } catch (error) {
-        console.error("Erreur scan CVE:", error);
-        alert("❌ Erreur lors du scan CVE");
-        event.target.disabled = false;
-        event.target.textContent = "🛡️ Scan CVE";
-      }
-    }
-
-    async function runSpeedtest() {
-      const button = qs("#runSpeedtestBtn");
-      button.disabled = true;
-      button.textContent = "Test…";
-      try {
-        await fetchJSON("/api/speedtest/run", { method: "POST" });
-        await loadSpeedtests();
-        await loadAlerts();
-      } catch (error) {
-        alert("Impossible de lancer le speedtest.");
-      } finally {
-        button.disabled = false;
-        button.textContent = "▶ Lancer";
-      }
-    }
-
-    function prefillCveTarget(value) {
-      qs("#cveTarget").value = value;
-    }
-
-    async function runCveScan() {
-      const target = qs("#cveTarget").value.trim();
-      if (!target) {
-        alert("Entrez une IP ou un hostname.");
-        return;
-      }
-
-      qs("#cveStatus").textContent = `Scan en cours pour ${target}…`;
-      qs("#cveResults").innerHTML = "";
-
-      try {
-        const data = await fetchJSON(`/api/cve/${encodeURIComponent(target)}`);
-        const cves = data.cves || [];
-        const criticalCount = cves.filter((item) => String(item.severity || "").toLowerCase() === "critical").length;
-        qs("#kpiCve").textContent = criticalCount;
-
-        if (!cves.length) {
-          qs("#cveStatus").textContent = `Aucune CVE trouvée pour ${target}.`;
-          qs("#cveResults").innerHTML = `<div class="empty">Aucun résultat.</div>`;
-          return;
-        }
-
-        qs("#cveStatus").textContent = `${cves.length} CVE(s) trouvée(s) pour ${target}.`;
-
-        qs("#cveResults").innerHTML = `
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>CVE</th>
-                  <th>Sévérité</th>
-                  <th>Score</th>
-                  <th>Description</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${cves.map((item) => {
-                  const sev = String(item.severity || "low").toLowerCase();
-                  const sevClass =
-                    sev === "critical" ? "badge-critical" :
-                    sev === "high" ? "badge-high" :
-                    sev === "medium" ? "badge-medium" : "badge-low";
-
-                  return `
+            <h3>📡 Carte réseau</h3>
+            <input type="text" id="filterInput" placeholder="Filtrer par IP ou nom..." style="width:100%;padding:0.5rem;margin:1rem 0;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:0.375rem;">
+            <button class="btn btn-sm" id="exportCsv">📥 Export CSV</button>
+            <table id="devicesTable">
+                <thead>
                     <tr>
-                      <td>${item.cve_id || "—"}</td>
-                      <td><span class="badge ${sevClass}">${sev}</span></td>
-                      <td>${item.cvss_score ?? "—"}</td>
-                      <td>${item.description || "—"}</td>
+                        <th>IP</th>
+                        <th>Nom personnalisé</th>
+                        <th>Hostname</th>
+                        <th>Fabricant</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
                     </tr>
-                  `;
-                }).join("")}
-              </tbody>
+                </thead>
+                <tbody id="devicesTableBody">
+                    <tr><td colspan="6" class="loading">Chargement...</td></tr>
+                </tbody>
             </table>
-          </div>
-        `;
-      } catch (error) {
-        qs("#cveStatus").textContent = `Erreur pendant le scan de ${target}.`;
-        qs("#cveResults").innerHTML = `<div class="empty">Le scan a échoué.</div>`;
-      }
-    }
-
-    function exportDevicesCsv() {
-      if (!devicesCache.length) {
-        alert("Aucune donnée à exporter.");
-        return;
-      }
-
-      const rows = [
-        ["ip", "alias", "hostname", "vendor", "is_online", "is_new"],
-        ...devicesCache.map((d) => [
-          d.ip,
-          d.alias || "",
-          d.hostname || "",
-          d.vendor || "",
-          d.is_online ? "1" : "0",
-          d.is_new ? "1" : "0"
-        ])
-      ];
-
-      const csv = rows.map((row) =>
-        row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(",")
-      ).join("\n");
-
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "devices.csv";
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-
-    async function refreshAll() {
-      await Promise.all([
-        checkHealth(),
-        loadDevices(),
-        loadSpeedtests(),
-        loadAlerts(),
-        loadHeatmap()
-      ]);
-    }
-
+        </div>
+    </div>
     
-    async function runNetworkScan() {
-      const button = qs("#refreshBtn");
-      const originalText = button.textContent;
-      button.disabled = true;
-      button.textContent = "⏳ Scan en cours...";
-      
-      try {
-        await fetchJSON("/api/scan/run", { method: "POST" });
-        await loadDevices();
-        await loadAlerts();
-        alert("✅ Scan réseau terminé!");
-      } catch (error) {
-        console.error("Erreur scan réseau:", error);
-        alert("❌ Impossible de lancer le scan réseau");
-      } finally {
-        button.disabled = false;
-        button.textContent = originalText;
-      }
-    }
-
-    function bindEvents() {
-      qs("#refreshBtn").addEventListener("click", refreshAll);
-      qs("#runSpeedtestBtn").addEventListener("click", runSpeedtest);
-        qs("#refreshBtn").addEventListener("click", runNetworkScan);
-      qs("#runCveBtn").addEventListener("click", runCveScan);
-      qs("#exportCsvBtn").addEventListener("click", exportDevicesCsv);
-      qs("#deviceSearch").addEventListener("input", renderDevices);
-      qs("#statusFilter").addEventListener("change", renderDevices);
-    }
-
-    updateClock();
-    setInterval(updateClock, 1000);
-    setupThemeToggle();
-    bindEvents();
-    refreshAll();
-    setInterval(refreshAll, 30000);
-  </script>
+    <script>
+        const API_BASE = '';
+        const qs = (s) => document.querySelector(s);
+        const qsa = (s) => document.querySelectorAll(s);
+        
+        async function fetchJSON(url, options = {}) {
+            const res = await fetch(API_BASE + url, options);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.json();
+        }
+        
+        async function loadDevices() {
+            try {
+                const data = await fetchJSON('/api/devices');
+                qs('#onlineCount').textContent = data.online_count || 0;
+                
+                const tbody = qs('#devicesTableBody');
+                if (!data.devices || data.devices.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="loading">Aucun appareil détecté</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = data.devices.map(dev => `
+                    <tr>
+                        <td>${dev.ip}</td>
+                        <td>${dev.alias || '—'}</td>
+                        <td>${dev.hostname || '—'}</td>
+                        <td>${dev.vendor || 'Inconnu'}</td>
+                        <td><span class="badge ${dev.is_online ? 'online' : 'offline'}">${dev.is_online ? 'EN LIGNE' : 'HORS LIGNE'}</span></td>
+                        <td><button class="btn btn-sm" onclick="scanCveForDevice('${dev.ip}', '${dev.hostname || dev.ip}')">🛡️ Scan CVE</button></td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                console.error('Erreur loadDevices:', err);
+                qs('#devicesTableBody').innerHTML = '<tr><td colspan="6" class="error">Erreur de chargement</td></tr>';
+            }
+        }
+        
+        async function loadSpeedtest() {
+            try {
+                const data = await fetchJSON('/api/speedtest?limit=1');
+                if (data.history && data.history.length > 0) {
+                    const latest = data.history[0];
+                    qs('#downloadSpeed').textContent = latest.download_mbps ? latest.download_mbps.toFixed(2) + ' Mbps' : '— Mbps';
+                    qs('#uploadSpeed').textContent = latest.upload_mbps ? latest.upload_mbps.toFixed(2) + ' Mbps' : '— Mbps';
+                }
+            } catch (err) {
+                console.error('Erreur loadSpeedtest:', err);
+            }
+        }
+        
+        async function runNetworkScan() {
+            const btn = qs('#refreshBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Scan...';
+            try {
+                await fetchJSON('/api/scan/run', { method: 'POST' });
+                await loadDevices();
+                alert('✅ Scan réseau terminé!');
+            } catch (err) {
+                alert('❌ Erreur lors du scan');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔄 Scan Réseau';
+            }
+        }
+        
+        async function runSpeedtest() {
+            const btn = qs('#runSpeedtestBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Test...';
+            try {
+                await fetchJSON('/api/speedtest/run', { method: 'POST' });
+                await new Promise(r => setTimeout(r, 3000));
+                await loadSpeedtest();
+                alert('✅ Speedtest terminé!');
+            } catch (err) {
+                alert('❌ Impossible de lancer le speedtest');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '▶ Lancer';
+            }
+        }
+        
+        async function scanCveForDevice(ip, hostname) {
+            try {
+                const data = await fetchJSON(`/api/cve/${hostname}?device_ip=${ip}`);
+                if (data.vulnerabilities && data.vulnerabilities.length > 0) {
+                    alert(`✅ ${data.vulnerabilities.length} CVE(s) trouvée(s) pour ${hostname}\n\nPremières CVEs:\n` + 
+                          data.vulnerabilities.slice(0, 3).map(c => `• ${c.id}: ${c.severity || 'N/A'}`).join('\n'));
+                } else {
+                    alert(`ℹ️ Aucune CVE trouvée pour ${hostname}`);
+                }
+            } catch (err) {
+                console.error('Erreur scan CVE:', err);
+                alert('❌ Erreur lors du scan CVE');
+            }
+        }
+        
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme');
+            html.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
+            qs('#themeToggle').textContent = current === 'dark' ? '☀️' : '🌙';
+        }
+        
+        function exportCsv() {
+            const devices = Array.from(qsa('#devicesTableBody tr')).map(tr => {
+                const tds = tr.querySelectorAll('td');
+                return Array.from(tds).slice(0, 5).map(td => td.textContent).join(',');
+            });
+            const csv = 'IP,Nom,Hostname,Fabricant,Statut\n' + devices.join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'homenet_devices.csv';
+            a.click();
+        }
+        
+        async function init() {
+            await Promise.all([loadDevices(), loadSpeedtest()]);
+            qs('#refreshBtn').addEventListener('click', runNetworkScan);
+            qs('#runSpeedtestBtn').addEventListener('click', runSpeedtest);
+            qs('#themeToggle').addEventListener('click', toggleTheme);
+            qs('#exportCsv').addEventListener('click', exportCsv);
+            
+            qs('#filterInput').addEventListener('input', (e) => {
+                const filter = e.target.value.toLowerCase();
+                qsa('#devicesTableBody tr').forEach(tr => {
+                    const text = tr.textContent.toLowerCase();
+                    tr.style.display = text.includes(filter) ? '' : 'none';
+                });
+            });
+            
+            setInterval(() => { loadDevices(); loadSpeedtest(); }, 30000);
+        }
+        
+        init();
+    </script>
 </body>
 </html>
