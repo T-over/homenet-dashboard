@@ -372,7 +372,33 @@
       .kpi-grid { grid-template-columns: 1fr; }
       .logo span { display: none; }
     }
-  </style>
+  
+/* Rapport CVE */
+.cve-devices-list { margin-top: 1rem; }
+.cve-device-card {
+  background: var(--surface2);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: 0.5rem;
+  border-left: 4px solid var(--red);
+}
+.cve-device-card h4 { 
+  margin-bottom: 0.5rem; 
+  color: var(--text);
+}
+.cve-list {
+  list-style: none;
+  padding: 0;
+  margin-top: 0.5rem;
+}
+.cve-list li {
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  background: var(--surface);
+  border-radius: 0.3rem;
+  border-left: 2px solid var(--accent);
+}
+    </style>
 </head>
 <body>
   <div class="app">
@@ -501,6 +527,19 @@
           </div>
         </div>
       </section>
+
+      <!-- Onglet Rapport CVE -->
+      <div id="cve-report" class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <h3>🛡️ Rapport CVE Consolidé</h3>
+            <p>Toutes les vulnérabilités détectées sur le réseau</p>
+          </div>
+          <div id="cveReportContainer" style="padding: 1rem;">
+            <p class="loading">Chargement...</p>
+          </div>
+        </div>
+      </div>
     </main>
   </div>
 
@@ -571,7 +610,7 @@
             <span class="badge ${statusClass}">${statusText}</span>${newBadge}
           </td>
           <td>
-            <button class="btn" type="button" onclick="prefillCveTarget('${device.ip}')">Scan CVE</button>
+            <button class="btn btn-sm" onclick="runDeviceCve('${device.ip}', '${hostname}')">🛡️ Scan CVE</button>
           </td>
         </tr>
       `;
@@ -697,6 +736,54 @@
       }
     }
 
+    
+    async function loadCveReport() {
+      try {
+        const data = await fetchJSON("/api/cve/all");
+        const container = qs("#cveReportContainer");
+        
+        if (!data.devices || data.devices.length === 0) {
+          container.innerHTML = "<p>✅ Aucune CVE détectée sur le réseau</p>";
+          return;
+        }
+        
+        let html = `<div style="margin-bottom: 1rem;"><strong>Total: ${data.total} CVE(s) trouvée(s) sur ${data.devices.length} appareil(s)</strong></div>`;
+        html += '<div class="cve-devices-list">';
+        
+        for (const device of data.devices) {
+          html += `
+            <div class="cve-device-card">
+              <h4>🖥️ ${device.device} <span style="color: var(--muted); font-size: 0.9em;">(${device.ip})</span></h4>
+              <p style="color: var(--red); font-weight: bold;">⚠️ ${device.count} CVE(s) active(s)</p>
+              <ul class="cve-list">
+          `;
+          
+          for (const cve of device.cves) {
+            const severityColor = cve.severity === 'CRITICAL' ? 'var(--red)' : 
+                                  cve.severity === 'HIGH' ? 'orange' : 
+                                  cve.severity === 'MEDIUM' ? 'yellow' : 'var(--muted)';
+            html += `
+              >
+                <strong style="color: ${severityColor}">${cve.cve_id}</strong> 
+                <span style="background: ${severityColor}; color: black; padding: 2px 6px; border-radius: 3px; font-size: 0.8em;">${cve.severity}</span>
+                <span style="color: var(--muted);">Score: ${cve.cvss_score}</span>
+                <br>
+                <span style="font-size: 0.9em;">${cve.description || 'Pas de description'}</span>
+              </li>
+            `;
+          }
+          
+          html += '</ul></div>';
+        }
+        
+        html += '</div>';
+        container.innerHTML = html;
+      } catch (error) {
+        console.error("Erreur chargement rapport CVE:", error);
+        qs("#cveReportContainer").innerHTML = '<p class="error">❌ Erreur de chargement</p>';
+      }
+    }
+
     async function loadAlerts() {
       try {
         const data = await fetchJSON("/api/alerts");
@@ -748,6 +835,32 @@
         `;
       } catch (error) {
         box.innerHTML = `<div class="empty">Heatmap indisponible.</div>`;
+      }
+    }
+
+    
+    async function runDeviceCve(ip, hostname) {
+      try {
+        const btn = event.target;
+        btn.disabled = true;
+        btn.textContent = "⏳";
+        
+        const result = await fetchJSON(`/api/cve/${hostname}?device_ip=${ip}`);
+        
+        if (result.vulnerabilities && result.vulnerabilities.length > 0) {
+          alert(`✅ ${result.count} CVE(s) trouvée(s) pour ${hostname}\nScan sauvegardé en base de données`);
+          await loadAlerts();
+        } else {
+          alert(`ℹ️ Aucune CVE trouvée pour ${hostname}`);
+        }
+        
+        btn.disabled = false;
+        btn.textContent = "🛡️ Scan CVE";
+      } catch (error) {
+        console.error("Erreur scan CVE:", error);
+        alert("❌ Erreur lors du scan CVE");
+        event.target.disabled = false;
+        event.target.textContent = "🛡️ Scan CVE";
       }
     }
 
@@ -874,9 +987,31 @@
       ]);
     }
 
+    
+    async function runNetworkScan() {
+      const button = qs("#refreshBtn");
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = "⏳ Scan en cours...";
+      
+      try {
+        await fetchJSON("/api/scan/run", { method: "POST" });
+        await loadDevices();
+        await loadAlerts();
+        alert("✅ Scan réseau terminé!");
+      } catch (error) {
+        console.error("Erreur scan réseau:", error);
+        alert("❌ Impossible de lancer le scan réseau");
+      } finally {
+        button.disabled = false;
+        button.textContent = originalText;
+      }
+    }
+
     function bindEvents() {
       qs("#refreshBtn").addEventListener("click", refreshAll);
       qs("#runSpeedtestBtn").addEventListener("click", runSpeedtest);
+        qs("#refreshBtn").addEventListener("click", runNetworkScan);
       qs("#runCveBtn").addEventListener("click", runCveScan);
       qs("#exportCsvBtn").addEventListener("click", exportDevicesCsv);
       qs("#deviceSearch").addEventListener("input", renderDevices);

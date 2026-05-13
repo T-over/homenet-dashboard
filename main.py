@@ -16,6 +16,7 @@ import csv
 
 from config import SPEEDTEST_INTERVAL_MIN, HOST, PORT
 from database import (
+    get_cve_results, get_all_cve_summary, save_cve_result,
     init_db, get_all_devices, get_speedtest_history, get_alerts,
     update_device_alias, get_device_ping_history, get_bandwidth_heatmap,
     get_port_scan_results, save_port_scan

@@ -4,6 +4,7 @@ cve_checker.py — Détection des services sur une cible + recherche CVE via NIS
 
 import asyncio
 import logging
+from database import save_cve_result
 import httpx
 import nmap
 
