@@ -55,6 +55,21 @@ async def init_db() -> None:
                 message   TEXT NOT NULL,
                 resolved  INTEGER NOT NULL DEFAULT 0
             )
+
+                    # Table CVE
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS cve_results (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                device_ip       TEXT NOT NULL,
+                hostname        TEXT NOT NULL,
+                cve_id          TEXT NOT NULL,
+                description     TEXT,
+                severity        TEXT,
+                cvss_score      REAL,
+                scan_timestamp  TEXT NOT NULL,
+                resolved        INTEGER NOT NULL DEFAULT 0
+            )
+        """)
         """)
 
         # Table historique ping par appareil
@@ -291,3 +306,69 @@ async def get_alerts(limit: int = 50) -> list:
         """, (limit,))
         rows = await cursor.fetchall()
         return [dict(r) for r in rows]
+
+        # ────────────────────────────────────────────────────────────────────────────────
+# CVE Results
+# ────────────────────────────────────────────────────────────────────────────────
+
+async def save_cve_result(device_ip: str, hostname: str, cve_id: str, 
+                          description: str = "", severity: str = "", 
+                          cvss_score: float = 0.0) -> None:
+    """Sauvegarde un résultat de scan CVE."""
+    now = datetime.utcnow().isoformat()
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        await db.execute("""
+            INSERT INTO cve_results (device_ip, hostname, cve_id, description, 
+                                     severity, cvss_score, scan_timestamp, resolved)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+        """, (device_ip, hostname, cve_id, description, severity, cvss_score, now))
+        await db.commit()
+        logger.info(f"CVE sauvegardée: {cve_id} pour {hostname}")
+
+
+async def get_cve_results(device_ip: str = None, resolved: bool = False) -> list:
+    """Récupère les résultats CVE."""
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        
+        if device_ip:
+            query = """SELECT * FROM cve_results 
+                       WHERE device_ip = ? AND resolved = ? 
+                       ORDER BY scan_timestamp DESC"""
+            cursor = await db.execute(query, (device_ip, int(resolved)))
+        else:
+            query = """SELECT * FROM cve_results 
+                       WHERE resolved = ? 
+                       ORDER BY scan_timestamp DESC"""
+            cursor = await db.execute(query, (int(resolved),))
+        
+        rows = await cursor.fetchall()
+        return [dict(r) for r in rows]
+
+
+async def get_all_cve_summary() -> dict:
+    """Récupère un résumé de toutes les CVE par appareil."""
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        
+        query = """SELECT device_ip, hostname, COUNT(*) as cve_count
+                   FROM cve_results
+                   WHERE resolved = 0
+                   GROUP BY device_ip, hostname
+                   ORDER BY cve_count DESC"""
+        
+        cursor = await db.execute(query)
+        rows = await cursor.fetchall()
+        return [dict(r) for r in rows]
+
+
+async def mark_cve_resolved(cve_id: str, device_ip: str) -> None:
+    """Marque une CVE comme résolue."""
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        await db.execute("""
+            UPDATE cve_results 
+            SET resolved = 1 
+            WHERE cve_id = ? AND device_ip = ?
+        """, (cve_id, device_ip))
+        await db.commit()
+        logger.info(f"CVE {cve_id} marquée comme résolue pour {device_ip}")
