@@ -55,6 +55,7 @@ async def init_db() -> None:
                 message   TEXT NOT NULL,
                 resolved  INTEGER NOT NULL DEFAULT 0
             )
+                    """)
 
                     # Table CVE
         await db.execute("""
