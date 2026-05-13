@@ -39,6 +39,36 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 scheduler = AsyncIOScheduler()
 
+# ────────────────────────────────────────────────────────────────────────────────
+# Tâche automatique : Scan CVE sur tous les appareils
+# ────────────────────────────────────────────────────────────────────────────────
+
+async def scan_all_cves():
+    """Scan CVE automatique pour tous les appareils du réseau."""
+    try:
+        logger.info("Démarrage du scan CVE automatique pour tous les appareils...")
+        devices = await get_all_devices()
+        
+        if not devices:
+            logger.warning("Aucun appareil trouvé pour le scan CVE.")
+            return
+        
+        cve_count = 0
+        for device in devices:
+            hostname = device.get("hostname", "Inconnu")
+            try:
+                logger.info(f"Scan CVE pour {hostname}...")
+                cves = await check_cve(hostname)
+                if cves:
+                    cve_count += len(cves)
+                    logger.info(f"  → {len(cves)} CVE(s) trouvées pour {hostname}")
+            except Exception as e:
+                logger.error(f"Erreur scan CVE pour {hostname}: {e}")
+        
+        logger.info(f"Scan CVE automatique terminé. Total: {cve_count} CVE(s) trouvées.")
+    except Exception as e:
+        logger.error(f"Erreur globale scan CVE automatique: {e}")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialise la DB et démarre le scheduler au lancement."""
@@ -46,6 +76,7 @@ async def lifespan(app: FastAPI):
     await init_db()
     scheduler.add_job(scan_network, "interval", minutes=5, id="scan_reseau")
     scheduler.add_job(run_speedtest, "interval", minutes=SPEEDTEST_INTERVAL_MIN, id="speedtest")
+        scheduler.add_job(scan_all_cves, "interval", hours=24, id="cve_scan_auto")
     scheduler.start()
     logger.info("Scheduler démarré (scan: 5min, speedtest: %dmin)", SPEEDTEST_INTERVAL_MIN)
     yield
