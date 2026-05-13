@@ -8,8 +8,7 @@ from mac_vendor_lookup import AsyncMacLookup
 import nmap
 
 from config import NETWORK_RANGE
-from database import upsert_device, mark_devices_offline, add_alert, save_device_ping
-
+from database import upsert_device, set_device_offline, create_alert, save_device_ping
 logger = logging.getLogger(__name__)
 
 _nm = nmap.PortScanner()
@@ -90,7 +89,7 @@ async def scan_network() -> int:
                 logger.error("Erreur traitement host %s: %s", host, e)
 
         # Marquer hors ligne les absents
-        await mark_devices_offline(active_ips)
+        await set_device_offline(active_ips)
 
         # Historique ping offline pour les absents
         from database import get_all_devices
