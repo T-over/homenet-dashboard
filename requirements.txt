@@ -1,25 +1,26 @@
 # HomeNet Dashboard — Dépendances Python
 # Généré pour Python 3.11+
+# Installation : pip install -r requirements.txt
 
-# Serveur web
+# --- Serveur web ---
 fastapi==0.111.0
 uvicorn[standard]==0.30.1
 
-# Base de données
+# --- Base de données ---
 aiosqlite==0.20.0
 
-# Scheduler
+# --- Scheduler ---
 APScheduler==3.10.4
 
-# Scan réseau
+# --- Scan réseau ---
 python-nmap==0.7.1
 mac-vendor-lookup==0.1.12
 
-# Speedtest
+# --- Speedtest ---
 speedtest-cli==2.1.3
 
-# Requêtes HTTP (CVE checker)
+# --- Requêtes HTTP (CVE checker) ---
 httpx==0.27.0
 
-# Variables d'environnement
+# --- Variables d'environnement ---
 python-dotenv==1.0.1

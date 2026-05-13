@@ -1,5 +1,5 @@
 """
-cve_checker.py — Détection des services/versions sur une cible et recherche CVE via NIST NVD
+cve_checker.py — Détection des services sur une cible + recherche CVE via NIST NVD
 """
 
 import asyncio
@@ -14,7 +14,6 @@ _nm = nmap.PortScanner()
 
 
 def _run_service_scan(target: str) -> dict:
-    """Scan nmap approfondi : détection de services, versions, OS."""
     logger.info("Scan de services sur %s", target)
     try:
         _nm.scan(hosts=target, arguments="-sV -O --top-ports 1000 --host-timeout 60s --open")
@@ -25,7 +24,6 @@ def _run_service_scan(target: str) -> dict:
 
 
 def _extract_cpe_keywords(host_data: dict) -> list[str]:
-    """Extrait les mots-clés service/version depuis les données nmap."""
     keywords: list[str] = []
     for proto in ("tcp", "udp"):
         if proto not in host_data:
@@ -34,9 +32,7 @@ def _extract_cpe_keywords(host_data: dict) -> list[str]:
             product = info.get("product", "").strip()
             version = info.get("version", "").strip()
             if product:
-                kw = product
-                if version:
-                    kw += f" {version}"
+                kw = product + (f" {version}" if version else "")
                 keywords.append(kw)
     if "osmatch" in host_data:
         for osmatch in host_data["osmatch"][:2]:
@@ -47,7 +43,6 @@ def _extract_cpe_keywords(host_data: dict) -> list[str]:
 
 
 async def _query_nvd(keyword: str, client: httpx.AsyncClient) -> list[dict]:
-    """Interroge l'API NIST NVD pour un mot-clé donné."""
     params = {"keywordSearch": keyword, "resultsPerPage": 10, "startIndex": 0}
     headers = {"apiKey": NVD_API_KEY} if NVD_API_KEY else {}
     try:
@@ -63,24 +58,20 @@ async def _query_nvd(keyword: str, client: httpx.AsyncClient) -> list[dict]:
         cve_data = item.get("cve", {})
         cve_id = cve_data.get("id", "N/A")
         descriptions = cve_data.get("descriptions", [])
-        description = next((d["value"] for d in descriptions if d.get("lang") == "en"),
-                           descriptions[0]["value"] if descriptions else "Aucune description.")
-        cvss_score = None
-        severity = "unknown"
-        metrics = cve_data.get("metrics", {})
-        for cvss_version in ("cvssMetricV31", "cvssMetricV30", "cvssMetricV2"):
-            entries = metrics.get(cvss_version, [])
+        description = next((d["value"] for d in descriptions if d.get("lang") == "en"), "N/A")
+        cvss_score, severity = None, "unknown"
+        for v in ("cvssMetricV31", "cvssMetricV30", "cvssMetricV2"):
+            entries = cve_data.get("metrics", {}).get(v, [])
             if entries:
                 cvss_data = entries[0].get("cvssData", {})
                 cvss_score = cvss_data.get("baseScore")
-                severity = cvss_data.get("baseSeverity", entries[0].get("baseSeverity", "unknown"))
+                severity = cvss_data.get("baseSeverity", "unknown").lower()
                 break
-        severity = severity.lower()
         if cvss_score is not None:
-            if cvss_score >= 9.0:   severity = "critical"
+            if cvss_score >= 9.0: severity = "critical"
             elif cvss_score >= 7.0: severity = "high"
             elif cvss_score >= 4.0: severity = "medium"
-            elif cvss_score > 0:    severity = "low"
+            else: severity = "low"
         cves.append({
             "cve_id": cve_id,
             "description": description[:300] + ("..." if len(description) > 300 else ""),
@@ -92,23 +83,26 @@ async def _query_nvd(keyword: str, client: httpx.AsyncClient) -> list[dict]:
 
 
 async def check_cve(hostname: str) -> dict:
-    """Scan des services + recherche CVE sur la cible."""
     loop = asyncio.get_event_loop()
     host_data = await loop.run_in_executor(None, _run_service_scan, hostname)
     if not host_data:
         return {"target": hostname, "services_detected": [], "cves": [],
                 "error": f"Hôte {hostname} inaccessible ou aucun service détecté."}
+
     keywords = _extract_cpe_keywords(host_data)
     all_cves: list[dict] = []
     seen_ids: set[str] = set()
+
     async with httpx.AsyncClient() as client:
         results = await asyncio.gather(*[_query_nvd(kw, client) for kw in keywords[:10]], return_exceptions=True)
+
     for result in results:
         if isinstance(result, list):
             for cve in result:
                 if cve["cve_id"] not in seen_ids:
                     all_cves.append(cve)
                     seen_ids.add(cve["cve_id"])
+
     all_cves.sort(key=lambda c: c.get("cvss_score") or 0, reverse=True)
     return {
         "target": hostname,

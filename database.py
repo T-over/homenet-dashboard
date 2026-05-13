@@ -29,21 +29,21 @@ async def init_db() -> None:
         """)
         await db.execute("""
             CREATE TABLE IF NOT EXISTS speedtest_history (
-                id            INTEGER PRIMARY KEY AUTOINCREMENT,
-                timestamp     TEXT NOT NULL,
-                ping_ms       REAL,
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp   TEXT NOT NULL,
+                ping_ms     REAL,
                 download_mbps REAL,
-                upload_mbps   REAL
+                upload_mbps REAL
             )
         """)
         await db.execute("""
             CREATE TABLE IF NOT EXISTS alerts (
-                id        INTEGER PRIMARY KEY AUTOINCREMENT,
-                timestamp TEXT NOT NULL,
-                level     TEXT NOT NULL,
-                category  TEXT NOT NULL,
-                message   TEXT NOT NULL,
-                resolved  INTEGER NOT NULL DEFAULT 0
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp   TEXT NOT NULL,
+                level       TEXT NOT NULL,
+                category    TEXT NOT NULL,
+                message     TEXT NOT NULL,
+                resolved    INTEGER NOT NULL DEFAULT 0
             )
         """)
         await db.commit()
@@ -64,7 +64,8 @@ async def upsert_device(ip: str, mac: str, hostname: str, vendor: str) -> dict:
             is_new = True
         else:
             await db.execute("""
-                UPDATE devices SET mac=?, hostname=?, vendor=?, is_online=1, last_seen=? WHERE ip=?
+                UPDATE devices SET mac=?, hostname=?, vendor=?, is_online=1, last_seen=?
+                WHERE ip=?
             """, (mac, hostname, vendor, now, ip))
             is_new = bool(existing["is_new"])
         await db.commit()
@@ -80,7 +81,10 @@ async def mark_devices_offline(active_ips: list[str]) -> list[str]:
             online = await cur.fetchall()
         for row in online:
             if row["ip"] not in active_ips:
-                await db.execute("UPDATE devices SET is_online=0, last_seen=? WHERE ip=?", (now, row["ip"]))
+                await db.execute(
+                    "UPDATE devices SET is_online=0, last_seen=? WHERE ip=?",
+                    (now, row["ip"])
+                )
                 offline_ips.append(row["ip"])
         await db.commit()
     return offline_ips
@@ -118,17 +122,18 @@ async def create_alert(level: str, category: str, message: str) -> None:
     now = datetime.utcnow().isoformat()
     async with aiosqlite.connect(DATABASE_PATH) as db:
         await db.execute("""
-            INSERT INTO alerts (timestamp, level, category, message) VALUES (?, ?, ?, ?)
+            INSERT INTO alerts (timestamp, level, category, message)
+            VALUES (?, ?, ?, ?)
         """, (now, level, category, message))
         await db.commit()
-    logger.warning("[ALERTE %s] %s : %s", level.upper(), category, message)
 
 
 async def get_alerts(limit: int = 50) -> list[dict]:
     async with aiosqlite.connect(DATABASE_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute("""
-            SELECT * FROM alerts WHERE resolved = 0 ORDER BY timestamp DESC LIMIT ?
+            SELECT * FROM alerts WHERE resolved = 0
+            ORDER BY timestamp DESC LIMIT ?
         """, (limit,)) as cur:
             rows = await cur.fetchall()
     return [dict(r) for r in rows]

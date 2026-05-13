@@ -1,7 +1,7 @@
 # Données sensibles
 .env
 
-# Base de données
+# Base de données locale
 *.db
 *.db-shm
 *.db-wal
@@ -9,7 +9,7 @@
 # Résultats de scans
 scan_results/
 
-# Environnement virtuel
+# Environnement virtuel Python
 .venv/
 venv/
 env/
@@ -18,6 +18,8 @@ env/
 __pycache__/
 *.py[cod]
 *.pyo
+*.pyc
+*.pyd
 
 # Logs
 *.log
@@ -25,6 +27,13 @@ __pycache__/
 # IDEs
 .vscode/
 .idea/
+*.swp
+*.swo
 
 # macOS
 .DS_Store
+
+# Distribution
+dist/
+build/
+*.egg-info/

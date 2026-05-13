@@ -17,7 +17,6 @@ _mac_lookup = AsyncMacLookup()
 
 
 async def _lookup_vendor(mac: str) -> str:
-    """Retourne le fabricant d'une adresse MAC, ou 'Inconnu' si introuvable."""
     if not mac:
         return "Inconnu"
     try:
@@ -28,7 +27,6 @@ async def _lookup_vendor(mac: str) -> str:
 
 
 def _run_nmap_scan(network_range: str) -> list:
-    """Exécute nmap de façon synchrone (bloquante)."""
     logger.info("Lancement du scan nmap sur %s", network_range)
     try:
         _nm.scan(hosts=network_range, arguments="-sn --host-timeout 10s")
@@ -39,10 +37,6 @@ def _run_nmap_scan(network_range: str) -> list:
 
 
 async def scan_network() -> list[dict]:
-    """
-    Scanne le réseau, met à jour la BDD, génère des alertes.
-    Retourne la liste des appareils détectés.
-    """
     loop = asyncio.get_event_loop()
     hosts = await loop.run_in_executor(None, _run_nmap_scan, NETWORK_RANGE)
 
@@ -68,16 +62,12 @@ async def scan_network() -> list[dict]:
             await create_alert(
                 level="high",
                 category="new_device",
-                message=f"Nouvel appareil détecté sur le réseau : {ip} ({hostname}) — Fabricant : {vendor}",
+                message=f"Nouvel appareil détecté : {ip} ({hostname}) — Fabricant : {vendor}",
             )
 
         results.append({
-            "ip": ip,
-            "mac": mac,
-            "hostname": hostname,
-            "vendor": vendor,
-            "is_online": True,
-            "is_new": upsert_result["is_new"],
+            "ip": ip, "mac": mac, "hostname": hostname,
+            "vendor": vendor, "is_online": True, "is_new": upsert_result["is_new"],
         })
 
     offline_ips = await mark_devices_offline(active_ips)
@@ -88,5 +78,5 @@ async def scan_network() -> list[dict]:
             message=f"L'appareil {ip} n'est plus joignable sur le réseau.",
         )
 
-    logger.info("Scan terminé : %d actifs, %d passés offline", len(active_ips), len(offline_ips))
+    logger.info("Scan terminé : %d actifs, %d offline", len(active_ips), len(offline_ips))
     return results

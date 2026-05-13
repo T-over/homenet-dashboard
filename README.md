@@ -47,7 +47,7 @@ nano .env
 sudo .venv/bin/python main.py
 ```
 
-Ouvrez ensuite `http://localhost:8000` dans votre navigateur.
+Ouvrez `http://localhost:8000` dans votre navigateur.
 
 ## Configuration systemd
 
@@ -72,8 +72,6 @@ StandardError=journal
 WantedBy=multi-user.target
 ```
 
-Activez le service :
-
 ```bash
 sudo cp -r . /opt/homenet-dashboard
 sudo systemctl daemon-reload
@@ -85,13 +83,16 @@ sudo systemctl start homenet
 
 1. Installer Tailscale sur la VM : `curl -fsSL https://tailscale.com/install.sh | sh && sudo tailscale up`
 2. Installer Tailscale sur votre téléphone
-3. Récupérer l'IP Tailscale : `tailscale ip -4`
-4. Accéder depuis le téléphone : `http://<IP-TAILSCALE>:8000`
+3. Connecter les deux appareils au même compte Tailscale
+4. Récupérer l'IP Tailscale : `tailscale ip -4`
+5. Accéder via `http://<IP-tailscale>:8000`
 
 ## Sécurité
 
-⚠️ **Ne jamais exposer ce dashboard directement sur Internet** sans authentification forte.
-- Accès exclusivement via VPN (Tailscale, WireGuard)
+⚠️ **Ne jamais exposer ce dashboard directement sur Internet** sans authentification :
+- Il expose les informations de votre réseau interne
+- Pas d'authentification par défaut
+- Accès exclusivement via VPN (Tailscale recommandé)
 - Ne pas ouvrir le port 8000 dans votre box/routeur
 
 ## Variables d'environnement

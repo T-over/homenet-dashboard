@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-from config import SPEEDTEST_INTERVAL_MIN
+from config import SPEEDTEST_INTERVAL_MIN, HOST, PORT
 from database import init_db, get_all_devices, get_speedtest_history, get_alerts
 from scanner import scan_network
 from speedtest_log import run_speedtest
@@ -42,7 +42,7 @@ async def lifespan(app: FastAPI):
     scheduler.add_job(scan_network, "interval", minutes=5, id="network_scan")
     scheduler.add_job(run_speedtest, "interval", minutes=SPEEDTEST_INTERVAL_MIN, id="speedtest")
     scheduler.start()
-    logger.info("Scheduler démarré (scan réseau: 5 min, speedtest: %d min)", SPEEDTEST_INTERVAL_MIN)
+    logger.info("Scheduler démarré")
     yield
     scheduler.shutdown()
     logger.info("HomeNet Dashboard arrêté.")
@@ -57,10 +57,8 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=["*"], allow_credentials=True,
+    allow_methods=["*"], allow_headers=["*"],
 )
 
 app.mount("/static", StaticFiles(directory="frontend"), name="static")
@@ -77,8 +75,7 @@ async def api_devices():
         devices = await get_all_devices()
         return {"devices": devices, "online_count": sum(1 for d in devices if d["is_online"]), "total_count": len(devices)}
     except Exception as exc:
-        logger.error("Erreur /api/devices : %s", exc)
-        raise HTTPException(status_code=500, detail="Erreur lors de la récupération des appareils.")
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @app.get("/api/speedtest")
@@ -87,8 +84,7 @@ async def api_speedtest_history(limit: int = 24):
         history = await get_speedtest_history(limit=limit)
         return {"history": history, "count": len(history)}
     except Exception as exc:
-        logger.error("Erreur /api/speedtest : %s", exc)
-        raise HTTPException(status_code=500, detail="Erreur historique speedtest.")
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @app.post("/api/speedtest/run")
@@ -97,8 +93,7 @@ async def api_speedtest_run():
         result = await run_speedtest()
         return {"status": "success", "result": result}
     except Exception as exc:
-        logger.error("Erreur /api/speedtest/run : %s", exc)
-        raise HTTPException(status_code=500, detail=f"Erreur speedtest : {exc}")
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @app.get("/api/cve/{hostname}")
@@ -108,8 +103,7 @@ async def api_cve_scan(hostname: str):
     try:
         return await check_cve(hostname)
     except Exception as exc:
-        logger.error("Erreur /api/cve/%s : %s", hostname, exc)
-        raise HTTPException(status_code=500, detail=f"Erreur scan CVE : {exc}")
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @app.get("/api/alerts")
@@ -118,8 +112,7 @@ async def api_alerts(limit: int = 50):
         alerts = await get_alerts(limit=limit)
         return {"alerts": alerts, "count": len(alerts)}
     except Exception as exc:
-        logger.error("Erreur /api/alerts : %s", exc)
-        raise HTTPException(status_code=500, detail="Erreur alertes.")
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @app.get("/api/health")
@@ -129,5 +122,4 @@ async def api_health():
 
 if __name__ == "__main__":
     import uvicorn
-    from config import HOST, PORT
     uvicorn.run("main:app", host=HOST, port=PORT, reload=False, log_level="info")
