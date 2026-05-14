@@ -1,311 +1,991 @@
 <!DOCTYPE html>
-<html lang="fr" data-theme="dark">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HomeNet Dashboard v2</title>
+    <title>HomeNet Pulse — Command Center</title>
     <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
         :root {
-            --bg: #0f1117;
-            --surface: #1a1d27;
-            --surface2: #202430;
-            --text: #e4e6eb;
-            --muted: #8b92a4;
-            --accent: #1e90ff;
-            --green: #2ecc71;
-            --red: #e74c3c;
-            --orange: #f39c12;
-            --border: rgba(255,255,255,0.1);
+            --bg: #05080f;
+            --surface: rgba(10, 22, 45, 0.88);
+            --surface2: rgba(15, 32, 65, 0.65);
+            --cyan: #00d4ff;
+            --cyan-dim: rgba(0, 212, 255, 0.12);
+            --purple: #7c3aed;
+            --green: #00ff88;
+            --red: #ff3860;
+            --orange: #ffab40;
+            --text: #cce4ff;
+            --muted: #4a6a8a;
+            --border: rgba(0, 212, 255, 0.13);
+            --glow-cyan: 0 0 30px rgba(0, 212, 255, 0.25);
+            --glow-green: 0 0 20px rgba(0, 255, 136, 0.3);
         }
-        
-        [data-theme="light"] {
-            --bg: #f5f7fa;
-            --surface: #ffffff;
-            --surface2: #f0f2f5;
-            --text: #1a1d27;
-            --muted: #65676b;
-            --border: rgba(0,0,0,0.1);
-        }
-        
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+
+        html, body { height: 100%; overflow-x: hidden; }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background: var(--bg);
             color: var(--text);
+            font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+            font-size: 14px;
             line-height: 1.6;
         }
-        
-        .container { max-width: 1400px; margin: 0 auto; padding: 1rem; }
-        
-        header {
-            background: var(--surface);
+
+        #bg-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg, transparent, transparent 3px,
+                rgba(0, 0, 0, 0.04) 3px, rgba(0, 0, 0, 0.04) 4px
+            );
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .app {
+            position: relative;
+            z-index: 2;
+            min-height: 100vh;
             padding: 1rem;
-            margin-bottom: 2rem;
-            border-radius: 0.5rem;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        h1 { font-size: 1.8rem; font-weight: 600; }
-        
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            flex-direction: column;
             gap: 1rem;
-            margin-bottom: 2rem;
         }
-        
-        .card {
+
+        /* ── HEADER ── */
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.9rem 1.5rem;
             background: var(--surface);
-            padding: 1.5rem;
-            border-radius: 0.5rem;
             border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            backdrop-filter: blur(24px);
+            box-shadow: var(--glow-cyan), inset 0 1px 0 rgba(255,255,255,0.04);
         }
-        
-        .card h3 { font-size: 0.875rem; color: var(--muted); margin-bottom: 0.5rem; text-transform: uppercase; }
-        .card-value { font-size: 2rem; font-weight: 700; color: var(--accent); }
-        
+
+        .logo { display: flex; align-items: center; gap: 0.85rem; }
+
+        .logo-icon {
+            width: 42px; height: 42px;
+            border-radius: 0.6rem;
+            background: linear-gradient(135deg, rgba(0,212,255,0.3), rgba(124,58,237,0.4));
+            border: 1px solid rgba(0,212,255,0.35);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.3rem;
+            box-shadow: var(--glow-cyan);
+        }
+
+        .logo h1 {
+            font-size: 1.05rem; font-weight: 800;
+            color: var(--cyan);
+            letter-spacing: 0.08em; text-transform: uppercase;
+        }
+
+        .logo p { font-size: 0.65rem; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; }
+
+        .header-center { display: flex; align-items: center; gap: 1rem; }
+
+        .live-clock {
+            font-family: 'Courier New', monospace;
+            font-size: 1.6rem; font-weight: 800;
+            color: var(--cyan);
+            text-shadow: 0 0 20px rgba(0,212,255,0.6);
+            letter-spacing: 0.1em;
+        }
+
+        .live-date { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+
+        .pulse-badge {
+            display: flex; align-items: center; gap: 0.4rem;
+            font-size: 0.7rem; color: var(--green);
+            text-transform: uppercase; letter-spacing: 0.1em;
+        }
+
+        .pulse-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: var(--green); box-shadow: var(--glow-green);
+            animation: blink 2s infinite;
+        }
+
+        @keyframes blink { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.75)} }
+
+        .header-actions { display: flex; gap: 0.5rem; }
+
+        /* ── BUTTONS ── */
         .btn {
-            padding: 0.5rem 1rem;
-            border: none;
-            border-radius: 0.375rem;
+            padding: 0.45rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
             cursor: pointer;
-            font-size: 0.875rem;
-            font-weight: 500;
-            transition: all 0.2s;
-            background: var(--accent);
-            color: white;
+            font-size: 0.75rem; font-weight: 700;
+            letter-spacing: 0.06em; text-transform: uppercase;
+            transition: all 0.18s;
+            background: var(--surface2);
+            color: var(--text);
+            white-space: nowrap;
         }
-        
-        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .btn-sm { padding: 0.25rem 0.75rem; font-size: 0.8rem; }
-        
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
-        th { background: var(--surface2); font-weight: 600; }
-        tr:hover { background: var(--surface2); }
-        
-        .badge {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: 1rem;
-            font-size: 0.75rem;
-            font-weight: 600;
+
+        .btn:hover { border-color: var(--cyan); color: var(--cyan); box-shadow: var(--glow-cyan); transform: translateY(-1px); }
+        .btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+        .btn-primary { background: linear-gradient(135deg,rgba(0,212,255,.18),rgba(124,58,237,.18)); border-color: var(--cyan); color: var(--cyan); }
+        .btn-sm { padding: 0.28rem 0.65rem; font-size: 0.68rem; }
+
+        /* ── STATS ── */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 0.85rem;
         }
-        
-        .badge.online { background: var(--green); color: white; }
-        .badge.offline { background: var(--red); color: white; }
-        
-        .loading { text-align: center; padding: 2rem; color: var(--muted); }
-        .error { color: var(--red); padding: 1rem; }
-        
-        #devicesTable tbody {
-            display: block;
-            max-height: 500px;
+
+        @media(max-width:1100px){ .stats-grid{ grid-template-columns: repeat(3,1fr); } }
+        @media(max-width:650px){ .stats-grid{ grid-template-columns: repeat(2,1fr); } }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 1.1rem 1.2rem;
+            backdrop-filter: blur(20px);
+            position: relative; overflow: hidden;
+            transition: all 0.25s;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--ca, var(--cyan)), transparent);
+        }
+
+        .stat-card:hover { border-color: var(--ca, var(--cyan)); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+
+        .stat-label { font-size: 0.63rem; color: var(--muted); text-transform: uppercase; letter-spacing: .13em; margin-bottom: .45rem; }
+
+        .stat-value {
+            font-size: 1.9rem; font-weight: 900;
+            color: var(--ca, var(--cyan));
+            font-family: 'Courier New', monospace;
+            line-height: 1;
+            text-shadow: 0 0 18px currentColor;
+        }
+
+        .stat-sub { font-size: .68rem; color: var(--muted); margin-top: .2rem; }
+
+        .stat-sparkline { margin-top: .65rem; height: 28px; width: 100%; display: block; }
+
+        .progress-bar { height: 3px; background: rgba(255,255,255,.06); border-radius: 2px; overflow: hidden; margin-top: .6rem; }
+        .progress-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--cyan), var(--purple)); transition: width .6s ease; }
+
+        /* ── PANELS ── */
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            backdrop-filter: blur(20px);
+            overflow: hidden;
+        }
+
+        .panel-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: .85rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface2);
+        }
+
+        .panel-title {
+            font-size: .75rem; font-weight: 800;
+            text-transform: uppercase; letter-spacing: .13em;
+            color: var(--cyan);
+            display: flex; align-items: center; gap: .5rem;
+        }
+
+        .panel-meta { font-size: .65rem; color: var(--muted); }
+
+        /* ── GRID LAYOUTS ── */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        @media(max-width:900px){ .main-grid{ grid-template-columns: 1fr; } }
+
+        .bottom-grid {
+            display: grid;
+            grid-template-columns: 3fr 1fr;
+            gap: 1rem;
+        }
+
+        @media(max-width:900px){ .bottom-grid{ grid-template-columns: 1fr; } }
+
+        /* ── TOPOLOGY ── */
+        #topo-canvas { display: block; width: 100%; height: 290px; }
+
+        /* ── SPEED CHART ── */
+        .chart-wrap { padding: 1rem; }
+        #speed-chart { width: 100%; height: 260px; display: block; overflow: visible; }
+
+        /* ── DEVICE CARDS ── */
+        .device-search-wrap { padding: .85rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; gap: .5rem; align-items: center; }
+
+        .search-input {
+            flex: 1;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: .4rem;
+            padding: .45rem .85rem;
+            color: var(--text); font-size: .82rem;
+            outline: none; transition: border-color .2s;
+        }
+
+        .search-input:focus { border-color: var(--cyan); }
+        .search-input::placeholder { color: var(--muted); }
+
+        .devices-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: .75rem;
+            padding: 1rem;
+            max-height: 420px;
             overflow-y: auto;
         }
-        
-        #devicesTable thead, #devicesTable tbody tr {
-            display: table;
-            width: 100%;
-            table-layout: fixed;
+
+        .device-card {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: .65rem;
+            padding: .9rem 1rem;
+            position: relative; overflow: hidden;
+            transition: all .25s;
         }
+
+        .device-card::before {
+            content: '';
+            position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+            background: var(--dc, var(--muted));
+        }
+
+        .device-card.online  { --dc: var(--green); }
+        .device-card.offline { --dc: var(--red); }
+
+        .device-card:hover { border-color: var(--dc, var(--muted)); transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0,0,0,.3); }
+
+        .dev-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: .55rem; }
+
+        .dev-ip { font-family: 'Courier New', monospace; font-size: .95rem; font-weight: 700; color: var(--cyan); }
+        .dev-host { font-size: .68rem; color: var(--muted); margin-top: .05rem; }
+
+        .status-badge {
+            display: inline-flex; align-items: center; gap: .28rem;
+            padding: .18rem .55rem; border-radius: 2rem;
+            font-size: .6rem; font-weight: 800; text-transform: uppercase; letter-spacing: .07em;
+        }
+
+        .status-badge.online  { background: rgba(0,255,136,.13); color: var(--green); border: 1px solid rgba(0,255,136,.28); }
+        .status-badge.offline { background: rgba(255,56,96,.13);  color: var(--red);   border: 1px solid rgba(255,56,96,.28);  }
+
+        .dev-meta { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .65rem; }
+
+        .chip {
+            background: rgba(255,255,255,.04);
+            border: 1px solid var(--border);
+            border-radius: .25rem;
+            padding: .1rem .45rem;
+            font-size: .65rem; color: var(--muted);
+        }
+
+        .chip.new { color: var(--orange); border-color: rgba(255,171,64,.35); }
+
+        .alias-input {
+            width: 100%; margin-bottom: .55rem;
+            background: rgba(0,212,255,.05);
+            border: 1px solid var(--border);
+            border-radius: .3rem;
+            padding: .28rem .5rem;
+            color: var(--text); font-size: .72rem;
+            outline: none; transition: border-color .2s;
+        }
+
+        .alias-input:focus { border-color: var(--cyan); }
+
+        .dev-actions { display: flex; gap: .4rem; flex-wrap: wrap; }
+
+        .dev-ports { margin-top: .45rem; font-size: .68rem; color: var(--muted); min-height: 0; }
+
+        /* ── ALERTS ── */
+        .alerts-feed {
+            display: flex; flex-direction: column; gap: .5rem;
+            padding: .85rem;
+            max-height: 420px; overflow-y: auto;
+        }
+
+        .alert-item {
+            display: flex; gap: .65rem;
+            padding: .65rem .75rem;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: .5rem;
+            animation: slideIn .3s ease;
+        }
+
+        @keyframes slideIn { from{transform:translateX(16px);opacity:0} to{transform:translateX(0);opacity:1} }
+
+        .alert-bar { width: 4px; border-radius: 2px; flex-shrink: 0; align-self: stretch; }
+        .alert-bar.critical,.alert-bar.high { background: var(--red); box-shadow: 0 0 8px var(--red); }
+        .alert-bar.medium  { background: var(--orange); }
+        .alert-bar.low,.alert-bar.info { background: var(--cyan); }
+
+        .alert-msg  { font-size: .75rem; color: var(--text); }
+        .alert-time { font-size: .63rem; color: var(--muted); font-family: monospace; margin-top: .15rem; }
+
+        .sev-badge {
+            align-self: flex-start; flex-shrink: 0;
+            padding: .12rem .45rem; border-radius: .25rem;
+            font-size: .6rem; font-weight: 800; text-transform: uppercase;
+        }
+
+        .sev-badge.critical,.sev-badge.high { background: rgba(255,56,96,.18); color: var(--red); border: 1px solid rgba(255,56,96,.35); }
+        .sev-badge.medium { background: rgba(255,171,64,.18); color: var(--orange); border: 1px solid rgba(255,171,64,.35); }
+        .sev-badge.low,.sev-badge.info { background: rgba(0,212,255,.12); color: var(--cyan); border: 1px solid rgba(0,212,255,.25); }
+
+        /* ── TOAST ── */
+        #toasts {
+            position: fixed; top: 1rem; right: 1rem; z-index: 999;
+            display: flex; flex-direction: column; gap: .5rem;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: .55rem;
+            padding: .65rem 1rem;
+            min-width: 260px; max-width: 340px;
+            backdrop-filter: blur(24px);
+            display: flex; align-items: center; gap: .65rem;
+            font-size: .8rem;
+            animation: tIn .28s ease;
+            pointer-events: auto;
+        }
+
+        .toast.success { border-color: rgba(0,255,136,.4); box-shadow: 0 0 18px rgba(0,255,136,.15); }
+        .toast.error   { border-color: rgba(255,56,96,.4);  box-shadow: 0 0 18px rgba(255,56,96,.15);  }
+        .toast.info    { border-color: rgba(0,212,255,.3);  box-shadow: var(--glow-cyan); }
+
+        @keyframes tIn  { from{transform:translateX(60px);opacity:0} to{transform:translateX(0);opacity:1} }
+        @keyframes tOut { from{transform:translateX(0);opacity:1} to{transform:translateX(60px);opacity:0} }
+
+        /* ── MISC ── */
+        .empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--muted); font-size: .82rem; }
+
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(0,212,255,.2); border-radius: 2px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--cyan); }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🏠 HomeNet Dashboard v2</h1>
+
+<canvas id="bg-canvas"></canvas>
+<div id="toasts"></div>
+
+<div class="app">
+
+    <!-- ══ HEADER ══ -->
+    <header>
+        <div class="logo">
+            <div class="logo-icon">🛰️</div>
             <div>
-                <button class="btn" id="refreshBtn">🔄 Scan Réseau</button>
-                <button class="btn" id="themeToggle">🌙</button>
-            </div>
-        </header>
-        
-        <div class="stats">
-            <div class="card">
-                <h3>Appareils en ligne</h3>
-                <div class="card-value" id="onlineCount">0</div>
-            </div>
-            <div class="card">
-                <h3>Download actuel</h3>
-                <div class="card-value" id="downloadSpeed">— Mbps</div>
-                <button class="btn btn-sm" id="runSpeedtestBtn">▶ Lancer</button>
-            </div>
-            <div class="card">
-                <h3>Upload actuel</h3>
-                <div class="card-value" id="uploadSpeed">— Mbps</div>
-            </div>
-            <div class="card">
-                <h3>CVEs critiques</h3>
-                <div class="card-value" id="cveCount">0</div>
+                <h1>HomeNet Pulse</h1>
+                <p>Network Command Center</p>
             </div>
         </div>
-        
-        <div class="card">
-            <h3>📡 Carte réseau</h3>
-            <input type="text" id="filterInput" placeholder="Filtrer par IP ou nom..." style="width:100%;padding:0.5rem;margin:1rem 0;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:0.375rem;">
-            <button class="btn btn-sm" id="exportCsv">📥 Export CSV</button>
-            <table id="devicesTable">
-                <thead>
-                    <tr>
-                        <th>IP</th>
-                        <th>Nom personnalisé</th>
-                        <th>Hostname</th>
-                        <th>Fabricant</th>
-                        <th>Statut</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="devicesTableBody">
-                    <tr><td colspan="6" class="loading">Chargement...</td></tr>
-                </tbody>
-            </table>
+
+        <div class="header-center">
+            <div>
+                <div class="live-clock" id="clock">00:00:00</div>
+                <div class="live-date" id="date-line"></div>
+            </div>
+            <div class="pulse-badge"><div class="pulse-dot"></div>LIVE</div>
+        </div>
+
+        <div class="header-actions">
+            <button class="btn btn-primary" id="scanBtn">⚡ Scan réseau</button>
+            <button class="btn" id="speedBtn">📡 Speedtest</button>
+        </div>
+    </header>
+
+    <!-- ══ STATS ══ -->
+    <div class="stats-grid">
+        <div class="stat-card" style="--ca:var(--green)">
+            <div class="stat-label">En ligne</div>
+            <div class="stat-value" id="s-online">—</div>
+            <div class="stat-sub" id="s-total">/ — appareils</div>
+            <div class="progress-bar"><div class="progress-fill" id="s-prog" style="width:0%"></div></div>
+        </div>
+        <div class="stat-card" style="--ca:var(--cyan)">
+            <div class="stat-label">Download</div>
+            <div class="stat-value" id="s-dl">—</div>
+            <div class="stat-sub">Mbps</div>
+            <svg class="stat-sparkline" id="sp-dl" viewBox="0 0 100 28" preserveAspectRatio="none"></svg>
+        </div>
+        <div class="stat-card" style="--ca:var(--purple)">
+            <div class="stat-label">Upload</div>
+            <div class="stat-value" id="s-ul">—</div>
+            <div class="stat-sub">Mbps</div>
+            <svg class="stat-sparkline" id="sp-ul" viewBox="0 0 100 28" preserveAspectRatio="none"></svg>
+        </div>
+        <div class="stat-card" style="--ca:var(--orange)">
+            <div class="stat-label">Ping</div>
+            <div class="stat-value" id="s-ping">—</div>
+            <div class="stat-sub">ms</div>
+        </div>
+        <div class="stat-card" style="--ca:var(--red)">
+            <div class="stat-label">CVE critiques</div>
+            <div class="stat-value" id="s-cve">0</div>
+            <div class="stat-sub">vulnérabilités</div>
+        </div>
+        <div class="stat-card" style="--ca:var(--orange)">
+            <div class="stat-label">Alertes</div>
+            <div class="stat-value" id="s-alerts">0</div>
+            <div class="stat-sub">actives</div>
         </div>
     </div>
-    
-    <script>
-        const API_BASE = '';
-        const qs = (s) => document.querySelector(s);
-        const qsa = (s) => document.querySelectorAll(s);
-        
-        async function fetchJSON(url, options = {}) {
-            const res = await fetch(API_BASE + url, options);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            return res.json();
-        }
-        
-        async function loadDevices() {
-            try {
-                const data = await fetchJSON('/api/devices');
-                qs('#onlineCount').textContent = data.online_count || 0;
-                
-                const tbody = qs('#devicesTableBody');
-                if (!data.devices || data.devices.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" class="loading">Aucun appareil détecté</td></tr>';
-                    return;
+
+    <!-- ══ MAIN GRID (topology + chart) ══ -->
+    <div class="main-grid">
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">🔗 Topologie réseau</div>
+                <div class="panel-meta" id="topo-meta">Chargement…</div>
+            </div>
+            <canvas id="topo-canvas"></canvas>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">📈 Débits 24h</div>
+                <div style="display:flex;gap:1rem;font-size:.68rem">
+                    <span style="color:var(--cyan)">▬ Download</span>
+                    <span style="color:var(--purple)">▬ Upload</span>
+                </div>
+            </div>
+            <div class="chart-wrap">
+                <svg id="speed-chart" viewBox="0 0 580 240" preserveAspectRatio="xMidYMid meet">
+                    <defs>
+                        <linearGradient id="gDL" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="#00d4ff" stop-opacity=".35"/>
+                            <stop offset="100%" stop-color="#00d4ff" stop-opacity="0"/>
+                        </linearGradient>
+                        <linearGradient id="gUL" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="#7c3aed" stop-opacity=".35"/>
+                            <stop offset="100%" stop-color="#7c3aed" stop-opacity="0"/>
+                        </linearGradient>
+                    </defs>
+                    <g id="cg"></g>
+                    <g id="c-dl-a"></g><g id="c-ul-a"></g>
+                    <g id="c-dl-l"></g><g id="c-ul-l"></g>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ BOTTOM GRID (devices + alerts) ══ -->
+    <div class="bottom-grid">
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">📡 Appareils</div>
+                <a href="/api/devices/export" class="btn btn-sm">⬇ Export CSV</a>
+            </div>
+            <div class="device-search-wrap">
+                <input class="search-input" id="devSearch" type="text" placeholder="Filtrer par IP, nom, fabricant…">
+            </div>
+            <div id="devices-wrap">
+                <div class="empty-state">Chargement des appareils…</div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">🔔 Alertes</div>
+                <div class="panel-meta" id="alerts-meta">0 alerte</div>
+            </div>
+            <div class="alerts-feed" id="alerts-feed">
+                <div class="empty-state">Aucune alerte active</div>
+            </div>
+        </div>
+    </div>
+
+</div><!-- /app -->
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// PARTICLE BACKGROUND
+// ═══════════════════════════════════════════════════════════
+(function() {
+    const cv = document.getElementById('bg-canvas');
+    const cx = cv.getContext('2d');
+    const N  = 55;
+    let pts  = [];
+
+    function resize() { cv.width = innerWidth; cv.height = innerHeight; }
+
+    function mkPt() {
+        return {
+            x: Math.random() * cv.width,
+            y: Math.random() * cv.height,
+            vx: (Math.random() - .5) * .35,
+            vy: (Math.random() - .5) * .35,
+            r:  Math.random() * 1.8 + .8,
+            a:  Math.random() * .35 + .08
+        };
+    }
+
+    function tick() {
+        cx.clearRect(0, 0, cv.width, cv.height);
+        for (let i = 0; i < pts.length; i++) {
+            const p = pts[i];
+            p.x += p.vx; p.y += p.vy;
+            if (p.x < 0 || p.x > cv.width || p.y < 0 || p.y > cv.height) {
+                Object.assign(p, mkPt());
+                p.x = Math.random() * cv.width;
+                p.y = Math.random() * cv.height;
+            }
+            cx.beginPath();
+            cx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+            cx.fillStyle = `rgba(0,212,255,${p.a})`;
+            cx.fill();
+
+            for (let j = i+1; j < pts.length; j++) {
+                const q = pts[j];
+                const d = Math.hypot(p.x-q.x, p.y-q.y);
+                if (d < 110) {
+                    cx.beginPath();
+                    cx.moveTo(p.x, p.y);
+                    cx.lineTo(q.x, q.y);
+                    cx.strokeStyle = `rgba(0,212,255,${.055*(1-d/110)})`;
+                    cx.lineWidth = .6;
+                    cx.stroke();
                 }
-                
-                tbody.innerHTML = data.devices.map(dev => `
-                    <tr>
-                        <td>${dev.ip}</td>
-                        <td>${dev.alias || '—'}</td>
-                        <td>${dev.hostname || '—'}</td>
-                        <td>${dev.vendor || 'Inconnu'}</td>
-                        <td><span class="badge ${dev.is_online ? 'online' : 'offline'}">${dev.is_online ? 'EN LIGNE' : 'HORS LIGNE'}</span></td>
-                        <td><button class="btn btn-sm" onclick="scanCveForDevice('${dev.ip}', '${dev.hostname || dev.ip}')">🛡️ Scan CVE</button></td>
-                    </tr>
-                `).join('');
-            } catch (err) {
-                console.error('Erreur loadDevices:', err);
-                qs('#devicesTableBody').innerHTML = '<tr><td colspan="6" class="error">Erreur de chargement</td></tr>';
             }
         }
-        
-        async function loadSpeedtest() {
-            try {
-                const data = await fetchJSON('/api/speedtest?limit=1');
-                if (data.history && data.history.length > 0) {
-                    const latest = data.history[0];
-                    qs('#downloadSpeed').textContent = latest.download_mbps ? latest.download_mbps.toFixed(2) + ' Mbps' : '— Mbps';
-                    qs('#uploadSpeed').textContent = latest.upload_mbps ? latest.upload_mbps.toFixed(2) + ' Mbps' : '— Mbps';
-                }
-            } catch (err) {
-                console.error('Erreur loadSpeedtest:', err);
-            }
+        requestAnimationFrame(tick);
+    }
+
+    window.addEventListener('resize', resize);
+    resize();
+    for (let i = 0; i < N; i++) pts.push(mkPt());
+    tick();
+})();
+
+// ═══════════════════════════════════════════════════════════
+// CLOCK
+// ═══════════════════════════════════════════════════════════
+(function() {
+    const DAYS  = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+    const MONTHS= ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+    const pad   = n => String(n).padStart(2,'0');
+
+    function tick() {
+        const n = new Date();
+        document.getElementById('clock').textContent = `${pad(n.getHours())}:${pad(n.getMinutes())}:${pad(n.getSeconds())}`;
+        document.getElementById('date-line').textContent = `${DAYS[n.getDay()]} ${n.getDate()} ${MONTHS[n.getMonth()]} ${n.getFullYear()}`;
+    }
+
+    setInterval(tick, 1000);
+    tick();
+})();
+
+// ═══════════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════════
+function toast(msg, type='info', ms=4000) {
+    const icons = { success:'✅', error:'❌', info:'📡' };
+    const el = Object.assign(document.createElement('div'), { className: `toast ${type}` });
+    el.innerHTML = `<span>${icons[type]||'ℹ️'}</span><span>${msg}</span>`;
+    document.getElementById('toasts').prepend(el);
+    setTimeout(() => {
+        el.style.animation = 'tOut .28s ease forwards';
+        setTimeout(() => el.remove(), 290);
+    }, ms);
+}
+
+// ═══════════════════════════════════════════════════════════
+// API
+// ═══════════════════════════════════════════════════════════
+async function api(url, opts = {}) {
+    const r = await fetch(url, opts);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+}
+
+// ═══════════════════════════════════════════════════════════
+// ANIMATED COUNTER
+// ═══════════════════════════════════════════════════════════
+function counter(el, target, dec=0) {
+    const from = parseFloat(el.dataset.v || 0) || 0;
+    el.dataset.v = target;
+    let s = 0, total = 22;
+    const iv = setInterval(() => {
+        s++;
+        el.textContent = (from + (target - from) * (s/total)).toFixed(dec);
+        if (s >= total) { el.textContent = target.toFixed(dec); clearInterval(iv); }
+    }, 28);
+}
+
+// ═══════════════════════════════════════════════════════════
+// SPARKLINE
+// ═══════════════════════════════════════════════════════════
+function sparkline(id, data, color) {
+    const svg = document.getElementById(id);
+    if (!svg || !data.length) return;
+    const W = 100, H = 28;
+    const mx = Math.max(...data) || 1;
+    const pts = data.map((v,i) => `${(i/(data.length-1))*W},${H - (v/mx)*(H-2) - 1}`).join(' ');
+    svg.innerHTML = `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// SPEED CHART
+// ═══════════════════════════════════════════════════════════
+function drawChart(history) {
+    if (!history || history.length < 2) return;
+    const W=580,H=240, P={t:12,r:12,b:32,l:46};
+    const cW=W-P.l-P.r, cH=H-P.t-P.b;
+    const dl = history.map(h=>h.download_mbps||0);
+    const ul = history.map(h=>h.upload_mbps||0);
+    const mx = Math.max(...dl,...ul,1);
+    const xS = i => P.l + (i/(history.length-1))*cW;
+    const yS = v => P.t + cH - (v/mx)*cH;
+
+    // Grid + labels
+    let grid = '';
+    for (let i=0;i<=4;i++) {
+        const y = P.t+(i/4)*cH;
+        grid += `<line x1="${P.l}" y1="${y}" x2="${W-P.r}" y2="${y}" stroke="rgba(0,212,255,.07)" stroke-width="1"/>`;
+        grid += `<text x="${P.l-7}" y="${y+4}" text-anchor="end" fill="#4a6a8a" font-size="9">${(mx*(1-i/4)).toFixed(0)}</text>`;
+    }
+    const step = Math.max(1, Math.floor(history.length/5));
+    for (let i=0;i<history.length;i+=step) {
+        const x = xS(i);
+        const ts = history[i].timestamp ? new Date(history[i].timestamp).toLocaleTimeString('fr',{hour:'2-digit',minute:'2-digit'}) : '';
+        grid += `<text x="${x}" y="${H-8}" text-anchor="middle" fill="#4a6a8a" font-size="9">${ts}</text>`;
+    }
+    document.getElementById('cg').innerHTML = grid;
+
+    function area(data, fill, stroke) {
+        const lp = data.map((v,i) => `${i===0?'M':'L'}${xS(i)},${yS(v)}`).join(' ');
+        const ap = lp + ` L${xS(data.length-1)},${yS(0)} L${xS(0)},${yS(0)} Z`;
+        return `<path d="${ap}" fill="url(#${fill})"/><path d="${lp}" fill="none" stroke="${stroke}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`;
+    }
+
+    document.getElementById('c-dl-a').innerHTML = area(dl,'gDL','#00d4ff');
+    document.getElementById('c-ul-a').innerHTML = area(ul,'gUL','#7c3aed');
+}
+
+// ═══════════════════════════════════════════════════════════
+// TOPOLOGY
+// ═══════════════════════════════════════════════════════════
+let topoNodes = [], topoT = 0;
+
+function buildTopo(devices) {
+    const cv = document.getElementById('topo-canvas');
+    cv.width  = cv.offsetWidth || cv.parentElement.offsetWidth || 500;
+    cv.height = 290;
+    const cx = cv.width/2, cy = cv.height/2;
+    const rad = Math.min(cx, cy) * 0.62;
+
+    const online  = (devices||[]).filter(d=>d.is_online);
+    const offline = (devices||[]).filter(d=>!d.is_online);
+    const visible = [...online.slice(0,12), ...offline.slice(0,4)];
+
+    topoNodes = [{ label:'Router', x:cx, y:cy, online:true, router:true }];
+
+    visible.forEach((d,i) => {
+        const angle = (i/visible.length)*Math.PI*2 - Math.PI/2;
+        topoNodes.push({
+            label: d.alias||d.hostname||d.ip,
+            x: cx + Math.cos(angle)*rad,
+            y: cy + Math.sin(angle)*rad,
+            online: d.is_online,
+            router: false
+        });
+    });
+
+    document.getElementById('topo-meta').textContent =
+        `${online.length} en ligne · ${offline.length} hors ligne`;
+}
+
+function animateTopo() {
+    requestAnimationFrame(animateTopo);
+    const cv = document.getElementById('topo-canvas');
+    const cx = cv.getContext('2d');
+    cx.clearRect(0,0,cv.width,cv.height);
+    topoT += 0.018;
+
+    if (!topoNodes.length) {
+        cx.fillStyle='#4a6a8a'; cx.font='13px system-ui';
+        cx.textAlign='center'; cx.textBaseline='middle';
+        cx.fillText('Scan réseau requis', cv.width/2, cv.height/2);
+        return;
+    }
+
+    const router = topoNodes[0];
+
+    // Connections + packets
+    for (let i=1;i<topoNodes.length;i++) {
+        const nd = topoNodes[i];
+        cx.beginPath(); cx.moveTo(router.x,router.y); cx.lineTo(nd.x,nd.y);
+        cx.strokeStyle = nd.online ? 'rgba(0,255,136,.18)' : 'rgba(255,56,96,.1)';
+        cx.lineWidth = 1.2; cx.stroke();
+
+        if (nd.online) {
+            const t = (topoT + i*0.25) % 1;
+            const px = router.x + (nd.x-router.x)*t;
+            const py = router.y + (nd.y-router.y)*t;
+            cx.beginPath(); cx.arc(px,py,2.8,0,Math.PI*2);
+            cx.fillStyle='rgba(0,255,136,.85)'; cx.fill();
         }
-        
-        async function runNetworkScan() {
-            const btn = qs('#refreshBtn');
-            btn.disabled = true;
-            btn.textContent = '⏳ Scan...';
-            try {
-                await fetchJSON('/api/scan/run', { method: 'POST' });
-                await loadDevices();
-                alert('✅ Scan réseau terminé!');
-            } catch (err) {
-                alert('❌ Erreur lors du scan');
-            } finally {
-                btn.disabled = false;
-                btn.textContent = '🔄 Scan Réseau';
-            }
+    }
+
+    // Nodes
+    topoNodes.forEach((nd,i) => {
+        const rNode = nd.router ? 15 : 9;
+        const color = nd.router ? '#00d4ff' : nd.online ? '#00ff88' : '#ff3860';
+
+        // Glow
+        const g = cx.createRadialGradient(nd.x,nd.y,0,nd.x,nd.y,24);
+        g.addColorStop(0, nd.router ? 'rgba(0,212,255,.3)' : nd.online ? 'rgba(0,255,136,.18)' : 'rgba(255,56,96,.12)');
+        g.addColorStop(1,'transparent');
+        cx.beginPath(); cx.arc(nd.x,nd.y,24,0,Math.PI*2);
+        cx.fillStyle=g; cx.fill();
+
+        // Circle
+        cx.beginPath(); cx.arc(nd.x,nd.y,rNode,0,Math.PI*2);
+        cx.fillStyle=color; cx.fill();
+        cx.strokeStyle='rgba(0,0,0,.5)'; cx.lineWidth=2; cx.stroke();
+
+        // Label
+        cx.font=`${nd.router?'8.5':'7.5'}px system-ui,sans-serif`;
+        cx.fillStyle=color; cx.textAlign='center'; cx.textBaseline='top';
+        const lbl=(nd.label||'').length>13?(nd.label).slice(0,13)+'…':nd.label;
+        cx.fillText(lbl, nd.x, nd.y+rNode+4);
+    });
+
+    // Pulse ring on router
+    const pulse = 17 + Math.sin(topoT*3)*4;
+    cx.beginPath(); cx.arc(router.x,router.y,pulse,0,Math.PI*2);
+    cx.strokeStyle=`rgba(0,212,255,${.28+Math.sin(topoT*3)*.18})`;
+    cx.lineWidth=1.5; cx.stroke();
+}
+
+// ═══════════════════════════════════════════════════════════
+// DEVICE CARDS
+// ═══════════════════════════════════════════════════════════
+let cachedDevices = [];
+
+function fmtTime(ts) {
+    if (!ts) return '—';
+    try { return new Date(ts).toLocaleString('fr',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); }
+    catch { return ts; }
+}
+
+function renderDevices(devices) {
+    cachedDevices = devices;
+    const q = document.getElementById('devSearch').value.toLowerCase();
+    const list = q
+        ? devices.filter(d=>(d.ip||'').includes(q)||(d.hostname||'').toLowerCase().includes(q)||(d.alias||'').toLowerCase().includes(q)||(d.vendor||'').toLowerCase().includes(q))
+        : devices;
+
+    const sorted = [...list].sort((a,b)=>(b.is_online?1:0)-(a.is_online?1:0));
+    const wrap = document.getElementById('devices-wrap');
+
+    if (!sorted.length) {
+        wrap.innerHTML='<div class="empty-state">Aucun appareil trouvé</div>';
+        return;
+    }
+
+    wrap.innerHTML = `<div class="devices-grid">${sorted.map(devCard).join('')}</div>`;
+
+    sorted.forEach(d => {
+        const ip = d.ip.replace(/\./g,'_');
+        const inp = document.getElementById(`alias-${ip}`);
+        if (inp) {
+            inp.addEventListener('keypress', e => { if(e.key==='Enter') saveAlias(d.ip, inp.value); });
+            inp.addEventListener('blur', () => saveAlias(d.ip, inp.value));
         }
-        
-        async function runSpeedtest() {
-            const btn = qs('#runSpeedtestBtn');
-            btn.disabled = true;
-            btn.textContent = '⏳ Test...';
-            try {
-                await fetchJSON('/api/speedtest/run', { method: 'POST' });
-                await new Promise(r => setTimeout(r, 3000));
-                await loadSpeedtest();
-                alert('✅ Speedtest terminé!');
-            } catch (err) {
-                alert('❌ Impossible de lancer le speedtest');
-            } finally {
-                btn.disabled = false;
-                btn.textContent = '▶ Lancer';
-            }
+    });
+}
+
+function devCard(d) {
+    const ip = d.ip.replace(/\./g,'_');
+    return `
+    <div class="device-card ${d.is_online?'online':'offline'}">
+        <div class="dev-top">
+            <div>
+                <div class="dev-ip">${d.ip}</div>
+                <div class="dev-host">${d.hostname||'—'}</div>
+            </div>
+            <span class="status-badge ${d.is_online?'online':'offline'}">
+                ${d.is_online?'● EN LIGNE':'○ HORS LIGNE'}
+            </span>
+        </div>
+        <div class="dev-meta">
+            ${d.vendor?`<span class="chip">🏭 ${d.vendor}</span>`:''}
+            ${d.mac?`<span class="chip">🔗 ${d.mac.slice(0,11)}</span>`:''}
+            ${d.last_seen?`<span class="chip">🕐 ${fmtTime(d.last_seen)}</span>`:''}
+            ${d.is_new?'<span class="chip new">✨ Nouveau</span>':''}
+        </div>
+        <input class="alias-input" id="alias-${ip}" type="text" value="${d.alias||''}" placeholder="Nom personnalisé…">
+        <div class="dev-actions">
+            <button class="btn btn-sm" onclick="doPortScan('${d.ip}')">🔍 Ports</button>
+            <button class="btn btn-sm" onclick="doCveScan('${d.ip}','${(d.hostname||d.ip).replace(/'/g,'')}}')">🛡 CVE</button>
+        </div>
+        <div class="dev-ports" id="ports-${ip}"></div>
+    </div>`;
+}
+
+async function saveAlias(ip, alias) {
+    if (!alias) return;
+    try {
+        await api(`/api/devices/${ip}/alias`, {
+            method:'PUT',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({alias})
+        });
+        toast(`Alias "${alias}" sauvegardé`, 'success', 2500);
+    } catch { toast('Erreur sauvegarde alias', 'error'); }
+}
+
+async function doPortScan(ip) {
+    const el = document.getElementById(`ports-${ip.replace(/\./g,'_')}`);
+    if (!el) return;
+    el.textContent = '⏳ Scan des ports…';
+    try {
+        const data = await api(`/api/devices/${ip}/portscan`, {method:'POST'});
+        if (data.ports?.length) {
+            el.innerHTML = data.ports.map(p=>`<span style="background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.25);border-radius:.2rem;padding:.08rem .35rem;font-size:.63rem;margin:2px;display:inline-block;color:var(--cyan)">${p.port}/${p.protocol||'tcp'}</span>`).join('');
+        } else {
+            el.textContent = 'Aucun port ouvert';
         }
-        
-        async function scanCveForDevice(ip, hostname) {
-            try {
-                const data = await fetchJSON(`/api/cve/${hostname}?device_ip=${ip}`);
-                if (data.vulnerabilities && data.vulnerabilities.length > 0) {
-                    alert(`✅ ${data.vulnerabilities.length} CVE(s) trouvée(s) pour ${hostname}\n\nPremières CVEs:\n` + 
-                          data.vulnerabilities.slice(0, 3).map(c => `• ${c.id}: ${c.severity || 'N/A'}`).join('\n'));
-                } else {
-                    alert(`ℹ️ Aucune CVE trouvée pour ${hostname}`);
-                }
-            } catch (err) {
-                console.error('Erreur scan CVE:', err);
-                alert('❌ Erreur lors du scan CVE');
-            }
+    } catch { el.textContent = '❌ Erreur scan'; }
+}
+
+async function doCveScan(ip, hostname) {
+    toast(`Scan CVE pour ${hostname}…`, 'info', 3000);
+    try {
+        const data = await api(`/api/cve/${encodeURIComponent(hostname)}`);
+        const vulns = data.vulnerabilities||[];
+        if (vulns.length) {
+            toast(`${vulns.length} CVE(s) détectée(s) pour ${hostname}`, 'error');
+            counter(document.getElementById('s-cve'), vulns.length);
+        } else {
+            toast(`Aucune CVE pour ${hostname}`, 'success');
         }
-        
-        function toggleTheme() {
-            const html = document.documentElement;
-            const current = html.getAttribute('data-theme');
-            html.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
-            qs('#themeToggle').textContent = current === 'dark' ? '☀️' : '🌙';
+    } catch { toast('Erreur scan CVE', 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// ALERTS
+// ═══════════════════════════════════════════════════════════
+function renderAlerts(alerts) {
+    const n = alerts.length;
+    document.getElementById('alerts-meta').textContent = `${n} alerte${n!==1?'s':''}`;
+    counter(document.getElementById('s-alerts'), n);
+
+    const feed = document.getElementById('alerts-feed');
+    if (!n) { feed.innerHTML='<div class="empty-state">✓ Aucune alerte active</div>'; return; }
+
+    feed.innerHTML = alerts.map(a => {
+        const sev = (a.severity||'info').toLowerCase();
+        return `<div class="alert-item">
+            <div class="alert-bar ${sev}"></div>
+            <div style="flex:1;min-width:0">
+                <div class="alert-msg">${a.message||a.description||'Alerte réseau'}</div>
+                <div class="alert-time">${fmtTime(a.timestamp||a.created_at)}</div>
+            </div>
+            <span class="sev-badge ${sev}">${sev.toUpperCase()}</span>
+        </div>`;
+    }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+// LOAD ALL DATA
+// ═══════════════════════════════════════════════════════════
+async function loadAll() {
+    const [devRes, speedRes, alertRes] = await Promise.allSettled([
+        api('/api/devices'),
+        api('/api/speedtest?limit=24'),
+        api('/api/alerts?limit=25')
+    ]);
+
+    if (devRes.status === 'fulfilled') {
+        const d = devRes.value;
+        counter(document.getElementById('s-online'), d.online_count||0);
+        document.getElementById('s-total').textContent = `/ ${d.total_count||0} appareils`;
+        const pct = d.total_count ? (d.online_count/d.total_count*100) : 0;
+        document.getElementById('s-prog').style.width = pct+'%';
+        renderDevices(d.devices||[]);
+        buildTopo(d.devices||[]);
+    }
+
+    if (speedRes.status === 'fulfilled') {
+        const h = (speedRes.value.history||[]).slice().reverse();
+        if (h.length) {
+            const lat = h[h.length-1];
+            counter(document.getElementById('s-dl'), lat.download_mbps||0, 1);
+            counter(document.getElementById('s-ul'), lat.upload_mbps||0, 1);
+            if (lat.ping_ms) counter(document.getElementById('s-ping'), lat.ping_ms, 0);
+            sparkline('sp-dl', h.map(r=>r.download_mbps||0), '#00d4ff');
+            sparkline('sp-ul', h.map(r=>r.upload_mbps||0), '#7c3aed');
+            drawChart(h);
         }
-        
-        function exportCsv() {
-            const devices = Array.from(qsa('#devicesTableBody tr')).map(tr => {
-                const tds = tr.querySelectorAll('td');
-                return Array.from(tds).slice(0, 5).map(td => td.textContent).join(',');
-            });
-            const csv = 'IP,Nom,Hostname,Fabricant,Statut\n' + devices.join('\n');
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'homenet_devices.csv';
-            a.click();
-        }
-        
-        async function init() {
-            await Promise.all([loadDevices(), loadSpeedtest()]);
-            qs('#refreshBtn').addEventListener('click', runNetworkScan);
-            qs('#runSpeedtestBtn').addEventListener('click', runSpeedtest);
-            qs('#themeToggle').addEventListener('click', toggleTheme);
-            qs('#exportCsv').addEventListener('click', exportCsv);
-            
-            qs('#filterInput').addEventListener('input', (e) => {
-                const filter = e.target.value.toLowerCase();
-                qsa('#devicesTableBody tr').forEach(tr => {
-                    const text = tr.textContent.toLowerCase();
-                    tr.style.display = text.includes(filter) ? '' : 'none';
-                });
-            });
-            
-            setInterval(() => { loadDevices(); loadSpeedtest(); }, 30000);
-        }
-        
-        init();
-    </script>
+    }
+
+    if (alertRes.status === 'fulfilled') {
+        renderAlerts(alertRes.value.alerts||[]);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════
+// ACTIONS
+// ═══════════════════════════════════════════════════════════
+document.getElementById('scanBtn').addEventListener('click', async function() {
+    this.disabled=true; this.textContent='⏳ Scan…';
+    toast('Scan réseau lancé…','info',2000);
+    try { await api('/api/scan/run',{method:'POST'}); await loadAll(); toast('Scan terminé !','success'); }
+    catch { toast('Erreur lors du scan','error'); }
+    finally { this.disabled=false; this.textContent='⚡ Scan réseau'; }
+});
+
+document.getElementById('speedBtn').addEventListener('click', async function() {
+    this.disabled=true; this.textContent='⏳ Test…';
+    toast('Speedtest en cours…','info',8000);
+    try { await api('/api/speedtest/run',{method:'POST'}); await loadAll(); toast('Speedtest terminé !','success'); }
+    catch { toast('Erreur speedtest','error'); }
+    finally { this.disabled=false; this.textContent='📡 Speedtest'; }
+});
+
+document.getElementById('devSearch').addEventListener('input', () => renderDevices(cachedDevices));
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+animateTopo();
+loadAll();
+setInterval(loadAll, 30000);
+</script>
 </body>
 </html>
